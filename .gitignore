@@ -1,0 +1,5 @@
+_build/
+_sources/
+bin/
+eggs/
+develop-eggs/
