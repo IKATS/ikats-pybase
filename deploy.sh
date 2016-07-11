@@ -29,9 +29,6 @@ clean_eggs=false
 # Specify the build path
 custom_build_path=false
 build_path=${root_path}_build/
-# Branch to use for cloning
-branch=master
-git_login="undefined"
 proxy_login="undefined"
 
 while [[ $# -gt 0 ]]
@@ -47,16 +44,8 @@ do
          spark_home="$2"
          shift
          ;;
-      -g|--git_auth)
-         read git_login git_password <<< $(echo $2 | sed 's/:/ /')
-         shift
-         ;;
       -x|--proxy_auth)
          read proxy_login proxy_password <<< $(echo $2 | sed 's/:/ /')
-         shift
-         ;;
-      -b|--branch)
-         branch="$2"
          shift
          ;;
       -p|--build-path)
@@ -86,10 +75,6 @@ do
          echo -e "                       Run GUNICORN for this target"
          echo -e "                       Default: don't run gunicorn"
          echo -e ""
-         echo -e "   -b|--branch <branch>"
-         echo -e "                       use Git branch <branch> to deploy"
-         echo -e "                       Default: master"
-         echo -e ""
          echo -e "   -t|--target <platform>"
          echo -e "                       Specify the current platform [int|preprod|local|pic]"
          echo -e "                       Default: local"
@@ -101,9 +86,6 @@ do
          echo -e "   -x|--proxy_auth login:pass"
          echo -e "                       Specify the proxy credentials"
          echo -e "                       Default: environment defined"
-         echo -e ""
-         echo -e "   -g|--git_auth"
-         echo -e "                       Specify the Git credentials"
          echo -e ""
          echo -e "   -s|--spark-home <path>"
          echo -e "                       Specify the SPARK_HOME environment variable defined by <path>"
@@ -171,28 +153,6 @@ fi
 
 # Sources path
 sources_path=${root_path}_sources/
-if test ${git_login} == "undefined"
-then
-   echo -e "${RED}  No Git Credentials, assuming projects are already cloned"
-   if test ! -d ${sources_path}
-   then
-      echo "  Source path not found !"
-      exit 6;
-   fi
-else
-   echo -e "\n${YELLOW}Generating sources path${OFF}"
-   rm -rf ${sources_path};
-   mkdir -p ${sources_path}
-
-   # Cloning into sources
-   echo -e "\n${YELLOW}Getting sources${OFF}"
-   cd ${sources_path}
-
-   git clone -b ${branch} https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_core || exit 1;
-   git clone -b ${branch} https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_algos || exit 1;
-   git clone -b ${branch} https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_django || exit 1;
-
-fi
 
 # Building deploy src structure
 echo -e "\n${YELLOW}Building deployed structure${OFF}"
@@ -204,7 +164,6 @@ cp -rf ${sources_path}ikats_django/src/* ${build_path}
 cp ${root_path}setup.py ${build_path}
 cp ${root_path}bootstrap.py ${build_path}
 cp ${root_path}buildout.cfg ${build_path}
-
 
 cd ${build_path}
 
@@ -232,9 +191,7 @@ ${build_path}bin/buildout || exit 2;
 echo -e "${YELLOW}Cleaning pycache${OFF}"
 find ${build_path}ikats/ -name "__pycache__" -o -name "*.py[cod]" | xargs -i ls -l {}
 
-
 # Handling SPARK needs
-#TODO if
 export SPARK_HOME=${spark_home}
 export PYSPARK_PYTHON=${build_path}bin/python
 echo -e "${YELLOW}SPARK_HOME set to ${SPARK_HOME}${OFF}"
