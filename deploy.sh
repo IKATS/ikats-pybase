@@ -154,25 +154,29 @@ case $target in
 esac
 
 # Build path
-if test -d eggs
+eggs_backup_path=eggs
+if test -d ${eggs_backup_path}
 then 
-   rm -rf eggs
+   # Deleting old eggs (former unachieved build)
+   rm -rf ${eggs_backup_path}
 fi
-if test -d ${build_path}/eggs -a ${clean_eggs} == false
+if test -d ${build_path}eggs -a ${clean_eggs} == false
 then
    # Backup existing eggs (to avoid getting them again)
-   mv ${build_path}/eggs .
+   echo "Backup existing eggs"
+   mv ${build_path}eggs ${eggs_backup_path}
 fi
 echo -e "\n${YELLOW}Generating path${OFF}"
-rm -rf ${build_path};
+rm -rf ${build_path} || exit 1;
 mkdir -p ${build_path} || exit 1;
 
 mkdir -p ${log_path} || exit 1;
 
-if test -d eggs
+if test -d ${eggs_backup_path}
 then
    # Restoring saved eggs
-   mv eggs ${build_path}
+   echo "Restoring saved eggs"
+   mv ${eggs_backup_path} ${build_path}
 fi
 
 # Sources path
