@@ -111,6 +111,7 @@ case $target in
       then
          build_path=/home/ikats/code/
       fi
+      log_path=/home/ikats/logs/
       ;;
    "preprod")
       buildout_settings_target="settings.preprod"
@@ -118,6 +119,7 @@ case $target in
       then
          build_path=/home/ikats/code/
       fi
+      log_path=/home/ikats/logs/
       ;;
    "local"|"pic"|*)
       buildout_settings_target="settings"
@@ -125,6 +127,7 @@ case $target in
       then
          build_path=${root_path}_build/
       fi
+      log_path=${build_path}logs/
       ;;
 esac
 
@@ -142,7 +145,6 @@ echo -e "\n${YELLOW}Generating path${OFF}"
 rm -rf ${build_path};
 mkdir -p ${build_path}
 
-log_path=${build_path}logs/
 mkdir -p ${log_path}
 
 if test -d eggs
@@ -182,7 +184,18 @@ ls ${build_path}ikats/processing/ikats_processing/settings/*.py | xargs -i sed -
 sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" buildout.cfg
 
 # Get buildout
-python3 bootstrap.py || exit 2;
+py_cmd=python
+if python3 --version > /dev/null 2>&1
+then
+   py_cmd=python3
+elif python3.4 --version > /dev/null 2>&1
+then
+   py_cmd=python3.4
+elif python3.5 --version > /dev/null 2>&1
+then
+   py_cmd=python3.5
+fi
+$py_cmd bootstrap.py || exit 2;
 
 # Run buildout
 ${build_path}bin/buildout || exit 2;
@@ -205,7 +218,6 @@ then
 
    # Collect static
    ${build_path}bin/django collectstatic --noinput || exit 3;
-
 
    echo -e "\n${YELLOW}Running Gunicorn${OFF}"
 
