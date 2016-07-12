@@ -1,19 +1,5 @@
 #!/bin/bash
 
-# Colors
-OFF="\033[0m"
-RED="\033[31m"
-GREEN="\033[32m"
-YELLOW="\033[33m"
-BLUE="\033[34m"
-MAGENTA="\033[35m"
-CYAN="\033[36m"
-WHITE="\033[37m"
-UNDERLINE="\033[4m"
-HIDDEN="\033[8m"
-
-
-echo -e "\n${YELLOW}${UNDERLINE}Ikats Deployment Script${OFF}\n"
 
 root_path=`pwd`/
 
@@ -30,6 +16,7 @@ clean_eggs=false
 custom_build_path=false
 build_path=${root_path}_build/
 proxy_login="undefined"
+no_color=false
 
 while [[ $# -gt 0 ]]
 do
@@ -43,6 +30,9 @@ do
       -s|--spark-home)
          spark_home="$2"
          shift
+         ;;
+      --no-color)
+         no_color=true
          ;;
       -x|--proxy_auth)
          read proxy_login proxy_password <<< $(echo $2 | sed 's/:/ /')
@@ -60,7 +50,8 @@ do
          clean_eggs=true
          ;;
       -h|--help)
-         echo -e "${UNDERLINE}USAGE${OFF}"
+         echo -e "USAGE"
+         echo -e "-----"
          echo -e ""
          echo -e "   deploy.sh [-crh] [-t|--target <platform>] [-b|--branch <branch>] [-s|--spark-home <path>] [-p|--build-path <path>] [-x|--proxy_auth login:pass] -g|--git_auth login:pass"
          echo -e ""
@@ -91,6 +82,15 @@ do
          echo -e "                       Specify the SPARK_HOME environment variable defined by <path>"
          echo -e "                       Default: ~/tools/spark-1.5.2-bin-hadoop2.6"
          echo -e ""
+         echo -e ""
+         echo -e "RETURN STATUS"
+         echo -e "-------------"
+         echo -e ""
+         echo -e "   0: nominal "
+         echo -e "   1: Copy error"
+         echo -e "   2: Bootstrap/Buildout error"
+         echo -e "   3: Django error"
+         echo -e "   4: Gunicorn error"
          exit 0;
          ;;
       *)
@@ -100,9 +100,28 @@ do
    shift
 done
 
+if test ${no_color} == false
+then
+   # Colors
+   OFF="\033[0m"
+   RED="\033[31m"
+   GREEN="\033[32m"
+   YELLOW="\033[33m"
+   BLUE="\033[34m"
+   MAGENTA="\033[35m"
+   CYAN="\033[36m"
+   WHITE="\033[37m"
+   UNDERLINE="\033[4m"
+   HIDDEN="\033[8m"
+
+fi
+
+echo -e "\n${YELLOW}${UNDERLINE}Ikats Deployment Script${OFF}\n"
+
+
 host=`hostname`
 echo -e "${YELLOW}Target = $target${OFF} "
-echo -e "${YELLOW}hostname = $host${OFF} "
+echo -e "${YELLOW}Hostname = $host${OFF} "
 
 case $target in
    "int")
@@ -146,9 +165,9 @@ then
 fi
 echo -e "\n${YELLOW}Generating path${OFF}"
 rm -rf ${build_path};
-mkdir -p ${build_path}
+mkdir -p ${build_path} || exit 1;
 
-mkdir -p ${log_path}
+mkdir -p ${log_path} || exit 1;
 
 if test -d eggs
 then
@@ -162,13 +181,13 @@ sources_path=${root_path}_sources/
 # Building deploy src structure
 echo -e "\n${YELLOW}Building deployed structure${OFF}"
 cd ${build_path}
-cp -rf ${sources_path}ikats_core/src/* ${build_path}
-cp -rf ${sources_path}ikats_algos/src/* ${build_path}
-cp -rf ${sources_path}ikats_django/src/* ${build_path}
+cp -rf ${sources_path}ikats_core/src/* ${build_path} || exit 1;
+cp -rf ${sources_path}ikats_algos/src/* ${build_path} || exit 1;
+cp -rf ${sources_path}ikats_django/src/* ${build_path} || exit 1;
 
-cp ${root_path}setup.py ${build_path}
-cp ${root_path}bootstrap.py ${build_path}
-cp ${root_path}buildout.cfg ${build_path}
+cp ${root_path}setup.py ${build_path} || exit 1;
+cp ${root_path}bootstrap.py ${build_path} || exit 1;
+cp ${root_path}buildout.cfg ${build_path} || exit 1;
 
 cd ${build_path}
 
@@ -236,6 +255,8 @@ then
    then
       echo -e "${RED}Gunicorn can't be started${OFF}"
       exit 4;
+   else 
+      echo -e "${GREEN}Gunicorn started${OFF}"
    fi
   
 fi
