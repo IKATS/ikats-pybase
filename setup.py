@@ -9,8 +9,20 @@ setup(
     author='IKATS',
     packages=find_packages(),
     package_dir={'apps': 'ikats/processing/apps', 'ikats': 'ikats', 'contrib': 'ikats/algos/contrib'},
+    test_suite="nose.collector",
     tests_require=[
-        'mock', 'py4j'
+        'mock==1.3.0', 
+        'py4j', 
+        'httpretty==0.8.10'
     ],
-    install_requires=['setuptools', 'numpy', 'scipy', 'py4j', 'ikats_core', 'ikats_algo', 'cffi', 'setuptools'],
+    install_requires=[
+        'setuptools', 
+        'requests>=2.8.1', 
+        'numpy', 
+        'scipy', 
+        'py4j', 
+        'ikats_core', 
+        'ikats_algo', 
+        'cffi', 
+    ],
 )

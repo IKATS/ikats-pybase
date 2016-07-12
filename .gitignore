@@ -3,3 +3,4 @@ _sources/
 bin/
 eggs/
 develop-eggs/
+*.swp
