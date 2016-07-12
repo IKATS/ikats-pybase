@@ -109,6 +109,7 @@ case $target in
       buildout_settings_target="settings.int"
       if test ${custom_build_path} == false
       then
+         # Use default build path
          build_path=/home/ikats/code/
       fi
       log_path=/home/ikats/logs/
@@ -117,6 +118,7 @@ case $target in
       buildout_settings_target="settings.preprod"
       if test ${custom_build_path} == false
       then
+         # Use default build path
          build_path=/home/ikats/code/
       fi
       log_path=/home/ikats/logs/
@@ -125,6 +127,7 @@ case $target in
       buildout_settings_target="settings"
       if test ${custom_build_path} == false
       then
+         # Use default build path
          build_path=${root_path}_build/
       fi
       log_path=${build_path}logs/
