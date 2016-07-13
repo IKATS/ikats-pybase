@@ -1,6 +1,7 @@
 _build/
 _sources/
 bin/
+doc/
 eggs/
 develop-eggs/
 *.swp
