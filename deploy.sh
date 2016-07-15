@@ -36,7 +36,7 @@ do
       --no-color)
          no_color=true
          ;;
-      -x|--proxy_auth)
+      -x|--proxy-auth)
          read proxy_login proxy_password <<< $(echo $2 | sed 's/:/ /')
          shift
          ;;
@@ -79,7 +79,7 @@ do
          echo -e "                       Specify a specific build-path"
          echo -e "                       Default: depends on target platform"
          echo -e ""
-         echo -e "   -x|--proxy_auth login:pass"
+         echo -e "   -x|--proxy-auth login:pass"
          echo -e "                       Specify the proxy credentials"
          echo -e "                       Default: environment defined"
          echo -e ""

@@ -15,7 +15,7 @@ do
    key="$1"
 
    case $key in
-      -g|--git_auth)
+      -g|--git-auth)
          read git_login git_password <<< $(echo $2 | sed 's/:/ /')
          shift
          ;;
@@ -42,7 +42,7 @@ do
          echo -e "                       use Git branch <branch> to deploy"
          echo -e "                       Default: master"
          echo -e ""
-         echo -e "   -g|--git_auth"
+         echo -e "   -g|--git-auth"
          echo -e "                       Specify the Git credentials"
          echo -e ""
          exit 0;
