@@ -7,6 +7,7 @@ root_path=`pwd`/
 # Target
 target="local"
 # SPARK_HOME environment variable
+custom_spark_home=false
 spark_home=~/tools/spark-1.5.2-bin-hadoop2.6
 # Don't run gunicorn by default
 run_gunicorn=false
@@ -28,6 +29,7 @@ do
          shift
          ;;
       -s|--spark-home)
+         custom_spark_home=true
          spark_home="$2"
          shift
          ;;
@@ -142,7 +144,20 @@ case $target in
       fi
       log_path=/home/ikats/logs/
       ;;
-   "local"|"pic"|*)
+   "pic")
+      buildout_settings_target="settings"
+      if test ${custom_build_path} == false
+      then
+         # Use default build path
+         build_path=${root_path}_build/
+      fi
+      log_path=${build_path}logs/
+      if test ${custom_spark_home} == false
+      then
+         spark_home=/home/ikats/tools/spark-1.5.2-bin-hadoop2.6
+      fi
+      ;;
+   "local"|*)
       buildout_settings_target="settings"
       if test ${custom_build_path} == false
       then
@@ -242,9 +257,6 @@ then
    echo -e "\n${YELLOW}Running Django migration${OFF}"
    ${build_path}bin/django migrate --settings=ikats_processing.${buildout_settings_target} || exit 3;
 
-   # Collect static
-   ${build_path}bin/django collectstatic --noinput || exit 3;
-
    echo -e "\n${YELLOW}Running Gunicorn${OFF}"
 
    # Killing old gunicorn processes
@@ -264,5 +276,15 @@ then
    fi
   
 fi
+
+if test ${target} == "pic"
+then
+   
+   # Migrate
+   echo -e "\n${YELLOW}Running Django migration${OFF}"
+   ${build_path}bin/django migrate --settings=ikats_processing.${buildout_settings_target} || exit 3;
+
+   # Collect static
+   ${build_path}bin/django collectstatic --noinput || exit 3;
 
 exit 0
