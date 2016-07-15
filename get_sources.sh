@@ -1,19 +1,6 @@
 #!/bin/bash
 
-# Colors
-OFF="\033[0m"
-RED="\033[31m"
-GREEN="\033[32m"
-YELLOW="\033[33m"
-BLUE="\033[34m"
-MAGENTA="\033[35m"
-CYAN="\033[36m"
-WHITE="\033[37m"
-UNDERLINE="\033[4m"
-HIDDEN="\033[8m"
-
-
-echo -e "\n${YELLOW}${UNDERLINE}Ikats Deployment Script${OFF}\n"
+echo -e "\nIkats Deployment Script\n"
 
 root_path=`pwd`/
 
@@ -21,6 +8,7 @@ root_path=`pwd`/
 branch=master
 git_login="undefined"
 proxy_login="undefined"
+no_color=false
 
 while [[ $# -gt 0 ]]
 do
@@ -35,13 +23,20 @@ do
          branch="$2"
          shift
          ;;
+      --no-color)
+         no_color=true
+         ;;
       -h|--help)
-         echo -e "${UNDERLINE}USAGE${OFF}"
+         echo -e "USAGE"
+         echo -e "-----"
          echo -e ""
-         echo -e "   deploy.sh [-h] [-b|--branch <branch>] -g|--git_auth login:pass"
+         echo -e "   deploy.sh [options]"
          echo -e ""
          echo -e "   -h|--help"
          echo -e "                       Displays this help page"
+         echo -e ""
+         echo -e "   --no-color"
+         echo -e "                       Don't use colors"
          echo -e ""
          echo -e "   -b|--branch <branch>"
          echo -e "                       use Git branch <branch> to deploy"
@@ -58,6 +53,21 @@ do
    esac
    shift
 done
+
+if test ${no_color} == false
+then
+   # Colors
+   OFF="\033[0m"
+   RED="\033[31m"
+   GREEN="\033[32m"
+   YELLOW="\033[33m"
+   BLUE="\033[34m"
+   MAGENTA="\033[35m"
+   CYAN="\033[36m"
+   WHITE="\033[37m"
+   UNDERLINE="\033[4m"
+   HIDDEN="\033[8m"
+fi
 
 host=`hostname`
 echo -e "${YELLOW}hostname = $host${OFF} "

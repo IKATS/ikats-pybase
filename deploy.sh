@@ -55,10 +55,13 @@ do
          echo -e "USAGE"
          echo -e "-----"
          echo -e ""
-         echo -e "   deploy.sh [-crh] [-t|--target <platform>] [-b|--branch <branch>] [-s|--spark-home <path>] [-p|--build-path <path>] [-x|--proxy_auth login:pass] -g|--git_auth login:pass"
+         echo -e "   deploy.sh [options]"
          echo -e ""
          echo -e "   -h|--help"
          echo -e "                       Displays this help page"
+         echo -e ""
+         echo -e "   --no-color"
+         echo -e "                       Don't use colors"
          echo -e ""
          echo -e "   -c|--clean-eggs"
          echo -e "                       Don't backup the eggs formerly compiled"
@@ -133,6 +136,10 @@ case $target in
          # Use default build path
          build_path=/home/ikats/code/
       fi
+      if test ${custom_spark_home} == false
+      then
+         spark_home=/opt/spark/
+      fi
       log_path=/home/ikats/logs/
       ;;
    "preprod")
@@ -141,6 +148,10 @@ case $target in
       then
          # Use default build path
          build_path=/home/ikats/code/
+      fi
+      if test ${custom_spark_home} == false
+      then
+         spark_home=/opt/spark/
       fi
       log_path=/home/ikats/logs/
       ;;
@@ -286,5 +297,6 @@ then
 
    # Collect static
    ${build_path}bin/django collectstatic --noinput || exit 3;
+fi
 
 exit 0
