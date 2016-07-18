@@ -43,7 +43,8 @@ do
          exit 0;
          ;;
       *)
-         # unknown option
+         # Unknown option
+         echo -e "--> Option [$1] ignored !"
          ;;
    esac
    shift
@@ -98,6 +99,6 @@ export PYTHONPATH=${merged_src_path}:$PYTHONPATH
 # Generate documentation
 sphinx-apidoc  -fPe -o ${doc_path} ${merged_src_path}ikats/
 make html
-echo "google-chrome-stable ${doc_path}_build/html/index.html"
+echo "index.html available at : \n  ${doc_path}_build/html/index.html"
 
 exit 0;

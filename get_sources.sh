@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo -e "\nIkats Deployment Script\n"
+echo -e "\nIkats Sources gathering Script\n"
 
 root_path=`pwd`/
 
@@ -45,10 +45,19 @@ do
          echo -e "   -g|--git-auth"
          echo -e "                       Specify the Git credentials"
          echo -e ""
+         echo -e ""
+         echo -e "RETURN STATUS"
+         echo -e "-------------"
+         echo -e ""
+         echo -e "   0: nominal "
+         echo -e "   1: Git error"
+         echo -e "   2: no sources found"
+         echo -e "   3: copy error"
          exit 0;
          ;;
       *)
-         # unknown option
+         # Unknown option
+         echo -e "--> Option [$1] ignored !"
          ;;
    esac
    shift
@@ -70,22 +79,22 @@ then
 fi
 
 host=`hostname`
-echo -e "${YELLOW}hostname = $host${OFF} "
+echo -e "${YELLOW}hostname = $host${OFF}"
 
 # Sources path
 sources_path=${root_path}_sources/
 if test ${git_login} == "undefined"
 then
-   echo -e "${RED}  No Git Credentials, assuming projects are already cloned"
+   echo -e "${RED}  No Git Credentials, assuming projects are already cloned${OFF}"
    if test ! -d ${sources_path}
    then
       echo "  Source path not found !"
-      exit 6;
+      exit 2;
    fi
 else
    echo -e "\n${YELLOW}Generating sources path${OFF}"
    rm -rf ${sources_path};
-   mkdir -p ${sources_path}
+   mkdir -p ${sources_path} || exit 3;
 
    # Cloning into sources
    echo -e "\n${YELLOW}Getting sources${OFF}"

@@ -2,6 +2,7 @@
 
 
 root_path=`pwd`/
+proxy_addr="proxy3.si.c-s.fr:3128"
 
 # Default values
 # Target
@@ -96,10 +97,13 @@ do
          echo -e "   2: Bootstrap/Buildout error"
          echo -e "   3: Django error"
          echo -e "   4: Gunicorn error"
+         echo -e "   5: Target error"
+         echo -e "   6: no sources found"
          exit 0;
          ;;
       *)
-         # unknown option
+         # Unknown option
+         echo -e "--> Option [$1] ignored !"
          ;;
    esac
    shift
@@ -118,16 +122,19 @@ then
    WHITE="\033[37m"
    UNDERLINE="\033[4m"
    HIDDEN="\033[8m"
-
 fi
 
-echo -e "\n${YELLOW}${UNDERLINE}Ikats Deployment Script${OFF}\n"
+# Converting target to lowercase
+target=`echo $target | tr '[:upper:]' '[:lower:]'`
 
+echo -e "\n${YELLOW}${UNDERLINE}Ikats Deployment Script${OFF}\n"
 
 host=`hostname`
 echo -e "${YELLOW}Target = $target${OFF} "
 echo -e "${YELLOW}Hostname = $host${OFF} "
 
+
+# Managing path depending on target
 case $target in
    "int")
       buildout_settings_target="settings.int"
@@ -155,7 +162,7 @@ case $target in
       fi
       log_path=/home/ikats/logs/
       ;;
-   "pic")
+   "local")
       buildout_settings_target="settings"
       if test ${custom_build_path} == false
       then
@@ -163,19 +170,11 @@ case $target in
          build_path=${root_path}_build/
       fi
       log_path=${build_path}logs/
-      if test ${custom_spark_home} == false
-      then
-         spark_home=/home/ikats/tools/spark-1.5.2-bin-hadoop2.6
-      fi
       ;;
-   "local"|*)
-      buildout_settings_target="settings"
-      if test ${custom_build_path} == false
-      then
-         # Use default build path
-         build_path=${root_path}_build/
-      fi
-      log_path=${build_path}logs/
+   *)
+      # Unknown Target
+      echo -e "--> Unknown target [$1] !"
+      exit 5;
       ;;
 esac
 
@@ -192,10 +191,10 @@ then
    echo "Backup existing eggs"
    mv ${build_path}eggs ${eggs_backup_path}
 fi
+
 echo -e "\n${YELLOW}Generating path${OFF}"
 rm -rf ${build_path} || exit 1;
 mkdir -p ${build_path} || exit 1;
-
 mkdir -p ${log_path} || exit 1;
 
 if test -d ${eggs_backup_path}
@@ -207,6 +206,14 @@ fi
 
 # Sources path
 sources_path=${root_path}_sources/
+if test  ! -d ${sources_path}
+then
+   echo "Sources path not found at ${sources_path}";
+   exit 6;
+fi
+   
+   
+
 
 # Building deploy src structure
 echo -e "\n${YELLOW}Building deployed structure${OFF}"
@@ -225,8 +232,8 @@ echo -e "\n${YELLOW}Configuring python${OFF}"
 if test ${proxy_login} != "undefined"
 then
    # Only if proxy settings are set
-   export http_proxy=http://${proxy_login}:${proxy_password}@proxy3.si.c-s.fr:3128
-   export https_proxy=http://${proxy_login}:${proxy_password}@proxy3.si.c-s.fr:3128
+   export http_proxy=http://${proxy_login}:${proxy_password}@${proxy_addr}
+   export https_proxy=http://${proxy_login}:${proxy_password}@${proxy_addr}
    export no_proxy=thor.si.c-s.fr
 fi
 
@@ -235,7 +242,7 @@ fi
 ls ${build_path}ikats/processing/ikats_processing/settings/*.py | xargs -i sed -i -e "s@REP_LOGS = .\+@REP_LOGS = \"${log_path}\"@g" {}
 sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" buildout.cfg
 
-# Get buildout
+# Get buildout using an available python interpreter
 py_cmd=python
 if python3 --version > /dev/null 2>&1
 then
@@ -261,6 +268,7 @@ export SPARK_HOME=${spark_home}
 export PYSPARK_PYTHON=${build_path}bin/python
 echo -e "${YELLOW}SPARK_HOME set to ${SPARK_HOME}${OFF}"
 
+# Specific operations for node supporting Django
 if test ${run_gunicorn} == true
 then
    
@@ -288,15 +296,5 @@ then
   
 fi
 
-if test ${target} == "pic"
-then
-   
-   # Migrate
-   echo -e "\n${YELLOW}Running Django migration${OFF}"
-   ${build_path}bin/django migrate --settings=ikats_processing.${buildout_settings_target} || exit 3;
-
-   # Collect static
-   ${build_path}bin/django collectstatic --noinput || exit 3;
-fi
-
+# Exit with nominal status
 exit 0
