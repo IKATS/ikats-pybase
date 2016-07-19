@@ -11,9 +11,9 @@ setup(
     package_dir={'apps': 'ikats/processing/apps', 'ikats': 'ikats', 'contrib': 'ikats/algos/contrib'},
     test_suite="nose.collector",
     tests_require=[
-        'mock==1.3.0', 
+        'mock>=1.3.0', 
         'py4j', 
-        'httpretty==0.8.10'
+        'httpretty>=0.8.10'
     ],
     install_requires=[
         'setuptools', 
@@ -21,8 +21,6 @@ setup(
         'numpy', 
         'scipy', 
         'py4j', 
-        'ikats_core', 
-        'ikats_algo', 
         'cffi', 
     ],
 )
