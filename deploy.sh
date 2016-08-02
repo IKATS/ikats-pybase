@@ -232,9 +232,12 @@ echo -e "\n${YELLOW}Configuring python${OFF}"
 if test ${proxy_login} != "undefined"
 then
    # Only if proxy settings are set
+   echo "Using local proxy configuration"
    export http_proxy=http://${proxy_login}:${proxy_password}@${proxy_addr}
    export https_proxy=http://${proxy_login}:${proxy_password}@${proxy_addr}
    export no_proxy=thor.si.c-s.fr
+else
+   echo -e "${YELLOW}Assuming the proxy is set elsewhere${OFF}"
 fi
 
 # Overriding default settings
@@ -243,6 +246,10 @@ ls ${build_path}ikats/processing/ikats_processing/settings/*.py | xargs -i sed -
 sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" buildout.cfg
 
 # Get buildout using an available python interpreter
+if test -d /usr/local/bin/
+then
+   PATH=$PATH:/usr/local/bin/
+fi
 py_cmd=python
 if python3 --version > /dev/null 2>&1
 then
