@@ -100,30 +100,20 @@ else
    echo -e "\n${YELLOW}Getting sources${OFF}"
    cd ${sources_path}
 
-   git clone -b ${branch} https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_core 2> /dev/null
-   git clone -b ${branch} https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_algos 2> /dev/null
-   git clone -b ${branch} https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_django 2> /dev/null
-
-   project=ikats_core
-   if test ! -d ${project}
-   then
-      echo -e "${RED}${project} doesn't have branch ${branch}. Cloning master instead${OFF}"
-      git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/${project} || exit 1; 
-   fi
-
-   project=ikats_algos
-   if test ! -d ${project}
-   then
-      echo -e "${RED}${project} doesn't have branch ${branch}. Cloning master instead${OFF}"
-      git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/${project} || exit 1; 
-   fi
-
-   project=ikats_django
-   if test ! -d ${project}
-   then
-      echo -e "${RED}${project} doesn't have branch ${branch}. Cloning master instead${OFF}"
-      git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/${project} || exit 1; 
-   fi
+   git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_core 2> /dev/null
+   git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_algos 2> /dev/null
+   git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_django 2> /dev/null
+   
+   #Switching to requested branch (or 'master' if not found)
+   cd ${sources_path}ikats_core
+   git checkout ${branch} 2>/dev/null || echo "branch ${branch} doesn't exist for ikats_core"
+   
+   cd ${sources_path}ikats_algos
+   git checkout ${branch} 2>/dev/null || echo "branch ${branch} doesn't exist for ikats_algos"
+   
+   cd ${sources_path}ikats_django
+   git checkout ${branch} 2>/dev/null || echo "branch ${branch} doesn't exist for ikats_django"
+   
 
 fi
 exit 0
