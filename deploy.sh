@@ -247,7 +247,7 @@ sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" build
 
 # Add spark lib to pythonpath
 echo "    ${spark_home}python" > add.txt
-sed '/extra-paths =/r add.txt' buildout.cfg
+sed -i '/extra-paths =/r add.txt' buildout.cfg
 rm add.txt
 
 
