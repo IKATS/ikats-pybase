@@ -245,6 +245,12 @@ fi
 ls ${build_path}ikats/processing/ikats_processing/settings/*.py | xargs -i sed -i -e "s@REP_LOGS = .\+@REP_LOGS = \"${log_path}\"@g" {}
 sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" buildout.cfg
 
+# Add spark lib to pythonpath
+echo "    ${spark_home}python" > add.txt
+sed -i -e '/extra-paths =/r add.txt' buildout.cfg
+rm add.txt
+
+
 # Get buildout using an available python interpreter
 if test -d /usr/local/bin/
 then
