@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#
+# Generate the documentation associated to the python code
+# The documentation is build by parsing sphinx tags present in the code
+# The build consists in generating the html files viewable in a web browser
+#
 
 root_path=`pwd`/
 
@@ -7,6 +12,7 @@ root_path=`pwd`/
 merged_src_path=${root_path}_build/
 no_color=false
 doc_path=${root_path}doc/
+pyspark_path=/home/ikats/tools/spark-1.6.2-bin-hadoop2.6/python/
 
 while [[ $# -gt 0 ]]
 do
@@ -20,6 +26,10 @@ do
          doc_path="$2"
          shift
          ;;
+      --pyspark)
+         pyspark_path="$2"
+         shift
+         ;;
       -h|--help)
          echo -e "USAGE"
          echo -e "-----"
@@ -31,6 +41,9 @@ do
          echo -e ""
          echo -e "       -d <doc_path>"
          echo -e "            Define the doc path to <doc_path>"
+         echo -e ""
+         echo -e "       --pyspark <pyspark_path>"
+         echo -e "            pyspark python location"
          echo -e ""
          echo -e "       --no-color"
          echo -e "            Don't use color during script run"
@@ -95,10 +108,14 @@ cp ${root_path}Makefile ${doc_path}
 cp ${root_path}index.rst ${doc_path}
 
 export PYTHONPATH=${merged_src_path}:$PYTHONPATH
+export PYTHONPATH=${merged_src_path}ikats/processing/:$PYTHONPATH
+export PYTHONPATH=${merged_src_path}ikats/algo/contrib/:$PYTHONPATH
+export PYTHONPATH=${pyspark_path}:$PYTHONPATH
+
 
 # Generate documentation
 sphinx-apidoc  -fPe -o ${doc_path} ${merged_src_path}ikats/
 make html
-echo "index.html available at : \n  ${doc_path}_build/html/index.html"
+echo -e "index.html available at : \n  ${doc_path}_build/html/index.html"
 
 exit 0;
