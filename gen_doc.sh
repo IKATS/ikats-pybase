@@ -82,9 +82,10 @@ fi
 echo -e "\n${YELLOW}${UNDERLINE}Ikats Python Documentation Generation Script${OFF}\n"
 
 # Build path
-echo -e "\n${YELLOW}Generating path${OFF}"
-rm -rf ${merged_src_path} || exit 1;
-mkdir -p ${merged_src_path} || exit 1;
+# Comments the 3 lines below because this treatment is done by calling the deploy.sh script
+#echo -e "\n${YELLOW}Generating path${OFF}"
+#rm -rf ${merged_src_path} || exit 1;
+#mkdir -p ${merged_src_path} || exit 1;
 
 # Sources path
 clone_src_path=${root_path}_sources/
