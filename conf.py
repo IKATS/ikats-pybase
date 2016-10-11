@@ -22,6 +22,14 @@ import shlex
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('../src'))
 
+# Adds eggs directories to the sys path
+relative_eggs_path = '../../_build/eggs/'
+for egg_file in os.listdir(relative_eggs_path):
+  egg_full_path = os.path.abspath(relative_eggs_path + egg_file)
+  if os.path.isdir(egg_full_path):
+    sys.path.insert(0, egg_full_path)
+    print('Adding egg to sys.path: {}'.format(egg_full_path))
+
 os.environ['DJANGO_SETTINGS_MODULE'] = 'ikats_processing.settings'
 import django
 django.setup()
