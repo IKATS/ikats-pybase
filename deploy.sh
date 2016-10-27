@@ -193,7 +193,7 @@ then
 fi
 
 echo -e "\n${YELLOW}Generating path${OFF}"
-rm -rf ${build_path} || exit 1;
+rm -rf ${build_path};
 mkdir -p ${build_path} || exit 1;
 mkdir -p ${log_path} || exit 1;
 
