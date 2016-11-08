@@ -251,7 +251,7 @@ sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" build
 # Overriding ikats config
 sed -i -e "s/opentsdb\.read\.ip.*$/opentsdb.read.ip = ${opentsdb_ip}/" ${build_path}ikats/core/config/ikats.conf
 sed -i -e "s/opentsdb\.write\.ip.*$/opentsdb.write.ip = ${opentsdb_ip}/" ${build_path}ikats/core/config/ikats.conf
-sed -i -e "s/opentsdb\.tdm\.ip.*$/tdm.ip = ${tdm_ip}/" ${build_path}ikats/core/config/ikats.conf
+sed -i -e "s/tdm\.ip.*$/tdm.ip = ${tdm_ip}/" ${build_path}ikats/core/config/ikats.conf
 sed -i -e "s/cluster\.name.*$/cluster.name = ${target}/" ${build_path}ikats/core/config/ikats.conf
 node_name=$(hostname)
 sed -i -e "s/node\.name.*$/node.name = ${node_name}/" ${build_path}ikats/core/config/ikats.conf
