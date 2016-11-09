@@ -100,9 +100,9 @@ else
    echo -e "\n${YELLOW}Getting sources${OFF}"
    cd ${sources_path}
 
-   git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_core 2> /dev/null
-   git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_algos 2> /dev/null
-   git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_django 2> /dev/null
+   git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_core
+   git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_algos
+   git clone https://${git_login}:${git_password}@thor.si.c-s.fr/git/ikats_django
    
    #Switching to requested branch (or 'master' if not found)
    cd ${sources_path}ikats_core

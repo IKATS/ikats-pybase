@@ -5,3 +5,4 @@ doc/
 eggs/
 develop-eggs/
 *.swp
+.idea

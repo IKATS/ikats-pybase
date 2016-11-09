@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if test $USER != 'ikats'
+then
+   echo "This script must be run using ikats user only"
+   exit 1;
+fi
+
 
 root_path=`pwd`/
 proxy_addr="proxy3.si.c-s.fr:3128"
@@ -125,7 +131,7 @@ then
 fi
 
 # Converting target to lowercase
-target=`echo $target | tr '[:upper:]' '[:lower:]'`
+target=`echo ${target} | tr '[:upper:]' '[:lower:]'`
 
 echo -e "\n${YELLOW}${UNDERLINE}Ikats Deployment Script${OFF}\n"
 
@@ -135,9 +141,11 @@ echo -e "${YELLOW}Hostname = $host${OFF} "
 
 
 # Managing path depending on target
-case $target in
+case ${target} in
    "int")
       buildout_settings_target="settings.int"
+      opentsdb_ip="172.28.15.81"
+      tdm_ip="172.28.15.83"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -151,6 +159,8 @@ case $target in
       ;;
    "preprod")
       buildout_settings_target="settings.preprod"
+      opentsdb_ip="172.28.15.86"
+      tdm_ip="172.28.15.88"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -164,6 +174,8 @@ case $target in
       ;;
    "local")
       buildout_settings_target="settings"
+      opentsdb_ip="172.28.15.81"
+      tdm_ip="172.28.15.83"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -211,9 +223,6 @@ then
    echo "Sources path not found at ${sources_path}";
    exit 6;
 fi
-   
-   
-
 
 # Building deploy src structure
 echo -e "\n${YELLOW}Building deployed structure${OFF}"
@@ -245,6 +254,15 @@ fi
 ls ${build_path}ikats/processing/ikats_processing/settings/*.py | xargs -i sed -i -e "s@REP_LOGS = .\+@REP_LOGS = \"${log_path}\"@g" {}
 sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" buildout.cfg
 
+# Overriding ikats config
+echo "Configuring the node"
+sed -i -e "s/opentsdb\.read\.ip.*$/opentsdb.read.ip = ${opentsdb_ip}/" ${build_path}ikats/core/config/ikats.conf
+sed -i -e "s/opentsdb\.write\.ip.*$/opentsdb.write.ip = ${opentsdb_ip}/" ${build_path}ikats/core/config/ikats.conf
+sed -i -e "s/tdm\.ip.*$/tdm.ip = ${tdm_ip}/" ${build_path}ikats/core/config/ikats.conf
+sed -i -e "s/cluster\.name.*$/cluster.name = ${target}/" ${build_path}ikats/core/config/ikats.conf
+node_name=$(hostname)
+sed -i -e "s/node\.name.*$/node.name = ${node_name}/" ${build_path}ikats/core/config/ikats.conf
+
 # Add spark lib to pythonpath
 echo "    ${spark_home}python" > add.txt
 sed -i -e '/extra-paths =/r add.txt' buildout.cfg
@@ -267,7 +285,7 @@ elif python3.5 --version > /dev/null 2>&1
 then
    py_cmd=python3.5
 fi
-$py_cmd bootstrap.py || exit 2;
+${py_cmd} bootstrap.py || exit 2;
 
 # Run buildout
 ${build_path}bin/buildout || exit 2;
@@ -298,7 +316,7 @@ then
    my_ip=`hostname -I| sed 's/ //g'`
    ${build_path}bin/gunicorn-with-settings --bind $my_ip:8000 ikats_processing.wsgi:application > ${log_path}ikats_gunicorn.log 2>&1 &
    
-   # Test if gunicron well started
+   # Test if gunicorn well started
    if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -eq 0
    then
       echo -e "${RED}Gunicorn can't be started${OFF}"
