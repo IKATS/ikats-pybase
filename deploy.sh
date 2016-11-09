@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if test $USER != 'ikats'
+then
+   echo "This script must be run using ikats user only"
+   exit 1;
+fi
+
 
 root_path=`pwd`/
 proxy_addr="proxy3.si.c-s.fr:3128"
