@@ -311,7 +311,13 @@ then
 
    # Killing old gunicorn processes
    ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | xargs -i kill {}
-   
+
+   if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` == 2
+   then
+      echo -e "\033[31mIMPOSSIBLE DE KILL GUNICORN !!!!\033[0m"
+      exit 4;
+   fi
+
    # Starting new gunicorn
    my_ip=`hostname -I| sed 's/ //g'`
    ${build_path}bin/gunicorn-with-settings --bind $my_ip:8000 ikats_processing.wsgi:application > ${log_path}ikats_gunicorn.log 2>&1 &
