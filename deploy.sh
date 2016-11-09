@@ -249,6 +249,7 @@ ls ${build_path}ikats/processing/ikats_processing/settings/*.py | xargs -i sed -
 sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" buildout.cfg
 
 # Overriding ikats config
+echo "Configuring the node"
 sed -i -e "s/opentsdb\.read\.ip.*$/opentsdb.read.ip = ${opentsdb_ip}/" ${build_path}ikats/core/config/ikats.conf
 sed -i -e "s/opentsdb\.write\.ip.*$/opentsdb.write.ip = ${opentsdb_ip}/" ${build_path}ikats/core/config/ikats.conf
 sed -i -e "s/tdm\.ip.*$/tdm.ip = ${tdm_ip}/" ${build_path}ikats/core/config/ikats.conf
