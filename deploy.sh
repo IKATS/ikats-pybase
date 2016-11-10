@@ -320,7 +320,7 @@ then
 
    # Starting new gunicorn
    my_ip=`hostname -I| sed 's/ //g'`
-   ${build_path}bin/gunicorn-with-settings --bind $my_ip:8000 ikats_processing.wsgi:application > ${log_path}ikats_gunicorn.log 2>&1 &
+   ${build_path}bin/gunicorn-with-settings --bind $my_ip:8000 --log-level=DEBUG --workers 13 --timeout 7200 ikats_processing.wsgi:application > ${log_path}ikats_gunicorn.log 2>&1 &
    
    # Test if gunicorn well started
    if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -eq 0
