@@ -311,6 +311,7 @@ then
 
    # Killing old gunicorn processes
    ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | xargs -i kill -9 {}
+   sleep 1;
 
    if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -ne 0
    then
