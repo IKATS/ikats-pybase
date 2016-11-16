@@ -310,17 +310,20 @@ then
    echo -e "\n${YELLOW}Running Gunicorn${OFF}"
 
    # Killing old gunicorn processes
-   ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | xargs -i kill {}
+   ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | xargs -i kill -9 {}
+   
+   # Just wait a bit to let the process to be killed
+   sleep 3;
 
    if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -ne 0
    then
-      echo -e "\033[31mIMPOSSIBLE DE KILL GUNICORN !!!!\033[0m"
+      echo -e "${RED}IMPOSSIBLE DE KILL GUNICORN !!!!${OFF}"
       exit 4;
    fi
 
    # Starting new gunicorn
    my_ip=`hostname -I| sed 's/ //g'`
-   ${build_path}bin/gunicorn-with-settings --name ikats --bind $my_ip:8000 --timeout 7200 --workers 13 --log-level=DEBUG ikats_processing.wsgi:application > ${log_path}ikats_gunicorn.log 2>&1 &
+   ${build_path}bin/gunicorn-with-settings -c ${root_path}gunicorn.py.ini --bind $my_ip:8000 ikats_processing.wsgi:application --log-file ${log_path}ikats_gunicorn.log
    
    # Test if gunicorn well started
    if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -eq 0
