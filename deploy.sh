@@ -311,11 +311,13 @@ then
 
    # Killing old gunicorn processes
    ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | xargs -i kill -9 {}
-   sleep 1;
+   
+   # Just wait a bit to let the process to be killed
+   sleep 3;
 
    if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -ne 0
    then
-      echo -e "\033[31mIMPOSSIBLE DE KILL GUNICORN !!!!\033[0m"
+      echo -e "${RED}IMPOSSIBLE DE KILL GUNICORN !!!!${OFF}"
       exit 4;
    fi
 
