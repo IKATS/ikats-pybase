@@ -16,11 +16,12 @@ setup(
         'httpretty>=0.8.10'
     ],
     install_requires=[
-        'setuptools', 
-        'requests>=2.8.1', 
-        'numpy', 
-        'scipy', 
-        'py4j', 
-        'cffi', 
+        'setuptools',
+        'requests>=2.8.1',
+        'numpy',
+        'scipy',
+        'scikit-learn',
+        'py4j',
+        'cffi',
     ],
 )
