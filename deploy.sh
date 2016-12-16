@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if test $USER != 'ikats'
+if [[ $USER != 'ikats' ]]
 then
    echo "This script must be run using ikats user only"
    exit 1;
@@ -182,6 +182,17 @@ case ${target} in
          build_path=${root_path}_build/
       fi
       log_path=${build_path}logs/
+      ;;
+   "docker")
+      buildout_settings_target="settings"
+      opentsdb_ip="127.0.0.1"
+      tdm_ip="127.0.0.1"
+      if test ${custom_build_path} == false
+      then
+         # Use default build path
+         build_path=/home/ikats/code/
+      fi
+      log_path=/logs/
       ;;
    *)
       # Unknown Target
