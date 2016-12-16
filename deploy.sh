@@ -159,7 +159,7 @@ case ${target} in
       ;;
    "preprod")
       buildout_settings_target="settings.preprod"
-      opentsdb_ip="172.28.15.86"
+      opentsdb_ip="172.28.15.90"
       tdm_ip="172.28.15.88"
       if test ${custom_build_path} == false
       then
