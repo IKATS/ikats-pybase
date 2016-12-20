@@ -6,3 +6,7 @@ eggs/
 develop-eggs/
 *.swp
 .idea
+.project
+.pydevproject
+.settings
+*~
