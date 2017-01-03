@@ -2,8 +2,7 @@
 
 if [[ $USER != 'ikats' ]]
 then
-   echo "This script must be run using ikats user only"
-   exit 1;
+   echo "This script should be run using ikats user only !!!"
 fi
 
 
