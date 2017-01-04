@@ -2,8 +2,7 @@
 
 if [[ $USER != 'ikats' ]]
 then
-   echo "This script must be run using ikats user only"
-   exit 1;
+   echo "This script should be run using ikats user only !!!"
 fi
 
 
@@ -25,6 +24,7 @@ custom_build_path=false
 build_path=${root_path}_build/
 proxy_login="undefined"
 no_color=false
+keep_previous_buildout=false
 
 while [[ $# -gt 0 ]]
 do
@@ -34,6 +34,9 @@ do
       -t|--target)
          target="$2"
          shift
+         ;;
+      -k|--keep)
+         keep_previous_buildout=true
          ;;
       -s|--spark-home)
          custom_spark_home=true
@@ -73,6 +76,10 @@ do
          echo -e "   -c|--clean-eggs"
          echo -e "                       Don't backup the eggs formerly compiled"
          echo -e "                       Default: backup old eggs"
+         echo -e ""
+         echo -e "   -k|--keep"
+         echo -e "                       Keep previous buildout run (don't rm all)"
+         echo -e "                       Default: don't keep"
          echo -e ""
          echo -e "   -r|--run-gunicorn"
          echo -e "                       Run GUNICORN for this target"
@@ -216,7 +223,7 @@ then
 fi
 
 echo -e "\n${YELLOW}Generating path${OFF}"
-rm -rf ${build_path};
+[ $keep_previous_buildout=false ] && rm -rf ${build_path};
 mkdir -p ${build_path} || exit 1;
 mkdir -p ${log_path} || exit 1;
 
@@ -318,7 +325,7 @@ then
    echo -e "\n${YELLOW}Running Django migration${OFF}"
    ${build_path}bin/django migrate --settings=ikats_processing.${buildout_settings_target} || exit 3;
 
-   echo -e "\n${YELLOW}Running Gunicorn${OFF}"
+   echo -e "\n${YELLOW}Starting Gunicorn${OFF}"
 
    # Killing old gunicorn processes
    ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | xargs -i kill -9 {}
@@ -328,12 +335,12 @@ then
 
    if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -ne 0
    then
-      echo -e "${RED}IMPOSSIBLE DE KILL GUNICORN !!!!${OFF}"
+      echo -e "${RED}IMPOSSIBLE TO KILL GUNICORN !!!!${OFF}"
       exit 4;
    fi
 
    # Starting new gunicorn
-   my_ip=`hostname -I| sed 's/ //g'`
+   my_ip=`hostname -i| sed 's/ //g'`
    ${build_path}bin/gunicorn-with-settings -c ${root_path}gunicorn.py.ini --bind $my_ip:8000 ikats_processing.wsgi:application --log-file ${log_path}ikats_gunicorn.log
    
    # Test if gunicorn well started
