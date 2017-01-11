@@ -191,7 +191,7 @@ case ${target} in
       log_path=${build_path}logs/
       ;;
    "docker")
-      buildout_settings_target="settings"
+      buildout_settings_target="settings.docker"
       opentsdb_ip="127.0.0.1"
       tdm_ip="127.0.0.1"
       if test ${custom_build_path} == false
