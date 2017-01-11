@@ -321,30 +321,26 @@ echo -e "${YELLOW}SPARK_HOME set to ${SPARK_HOME}${OFF}"
 if test ${run_gunicorn} == true
 then
    
+   cd ${build_path}ikats/processing
+
    # Migrate
    echo -e "\n${YELLOW}Running Django migration${OFF}"
-   ${build_path}bin/django migrate --settings=ikats_processing.${buildout_settings_target} || exit 3;
+   ${build_path}bin/python manage.py migrate --settings=ikats_processing.${buildout_settings_target} || exit 3;
 
    echo -e "\n${YELLOW}Starting Gunicorn${OFF}"
 
-   # Killing old gunicorn processes
-   ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | xargs -i kill -9 {}
-   
+   # Killing old Gunicorn processes
+   ps -A -o pid,args | grep 'gunicorn.*ikats' | grep -v grep | awk '{ print $1 }' | xargs -i kill -9 {}
+
    # Just wait a bit to let the process to be killed
    sleep 3;
 
-   if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -ne 0
-   then
-      echo -e "${RED}IMPOSSIBLE TO KILL GUNICORN !!!!${OFF}"
-      exit 4;
-   fi
-
-   # Starting new gunicorn
-   my_ip=`hostname -i| sed 's/ //g'`
+   # Starting new Gunicorn
+   my_ip="127.0.0.1"
    ${build_path}bin/gunicorn-with-settings -c ${root_path}gunicorn.py.ini --bind $my_ip:8000 ikats_processing.wsgi:application --log-file ${log_path}ikats_gunicorn.log
-   
-   # Test if gunicorn well started
-   if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -eq 0
+
+   # Test if Gunicorn well started
+   if test `ps -A -o pid,args | grep 'gunicorn.*ikats' | grep -v grep | awk '{ print $1 }' | wc -l` -eq 0
    then
       echo -e "${RED}Gunicorn can't be started${OFF}"
       exit 4;
