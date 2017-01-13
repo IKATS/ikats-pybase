@@ -336,7 +336,7 @@ then
    sleep 3;
 
    # Starting new Gunicorn
-   my_ip="127.0.0.1"
+   my_ip=`hostname -i| sed 's/ //g'`
    ${build_path}bin/gunicorn-with-settings -c ${root_path}gunicorn.py.ini --bind $my_ip:8000 ikats_processing.wsgi:application --log-file ${log_path}ikats_gunicorn.log
 
    # Test if Gunicorn well started
