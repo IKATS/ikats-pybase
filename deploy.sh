@@ -151,8 +151,12 @@ echo -e "${YELLOW}Hostname = $host${OFF} "
 case ${target} in
    "int")
       buildout_settings_target="settings.int"
-      opentsdb_ip="172.28.15.85"
+      opentsdb_r_ip="172.28.15.85"
+      opentsdb_r_port="4242"
+      opentsdb_w_ip="172.28.15.85"
+      opentsdb_w_port="4242"
       tdm_ip="172.28.15.83"
+      tdm_port="80"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -166,8 +170,12 @@ case ${target} in
       ;;
    "preprod")
       buildout_settings_target="settings.preprod"
-      opentsdb_ip="172.28.15.90"
+      opentsdb_r_ip="172.28.15.90"
+      opentsdb_r_port="4242"
+      opentsdb_w_ip="172.28.15.90"
+      opentsdb_w_port="4242"
       tdm_ip="172.28.15.88"
+      tdm_port="80"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -181,8 +189,12 @@ case ${target} in
       ;;
    "local")
       buildout_settings_target="settings"
-      opentsdb_ip="172.28.15.81"
-      tdm_ip="172.28.15.83"
+      opentsdb_r_ip="127.0.0.1"
+      opentsdb_r_port="4242"
+      opentsdb_w_ip="127.0.0.1"
+      opentsdb_w_port="4242"
+      tdm_ip="127.0.0.1"
+      tdm_port="80"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -191,9 +203,13 @@ case ${target} in
       log_path=${build_path}logs/
       ;;
    "docker")
-      buildout_settings_target="settings"
-      opentsdb_ip="127.0.0.1"
+      buildout_settings_target="settings.docker"
+      opentsdb_r_ip="127.0.0.1"
+      opentsdb_r_port="4242"
+      opentsdb_w_ip="127.0.0.1"
+      opentsdb_w_port="4243"
       tdm_ip="127.0.0.1"
+      tdm_port="8080"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -274,12 +290,16 @@ sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" build
 
 # Overriding ikats config
 echo "Configuring the node"
-sed -i -e "s/opentsdb\.read\.ip.*$/opentsdb.read.ip = ${opentsdb_ip}/" ${build_path}ikats/core/config/ikats.conf
-sed -i -e "s/opentsdb\.write\.ip.*$/opentsdb.write.ip = ${opentsdb_ip}/" ${build_path}ikats/core/config/ikats.conf
-sed -i -e "s/tdm\.ip.*$/tdm.ip = ${tdm_ip}/" ${build_path}ikats/core/config/ikats.conf
-sed -i -e "s/cluster\.name.*$/cluster.name = ${target}/" ${build_path}ikats/core/config/ikats.conf
+config_file=${build_path}ikats/core/config/ikats.conf
+sed -i -e "s/opentsdb\.read\.ip.*$/opentsdb.read.ip = ${opentsdb_r_ip}/" ${config_file}
+sed -i -e "s/opentsdb\.read\.port.*$/opentsdb.read.port = ${opentsdb_r_port}/" ${config_file}
+sed -i -e "s/opentsdb\.write\.ip.*$/opentsdb.write.ip = ${opentsdb_w_ip}/" ${config_file}
+sed -i -e "s/opentsdb\.write\.port.*$/opentsdb.write.port = ${opentsdb_w_port}/" ${config_file}
+sed -i -e "s/tdm\.ip.*$/tdm.ip = ${tdm_ip}/" ${config_file}
+sed -i -e "s/tdm\.port.*$/tdm.port = ${tdm_port}/" ${config_file}
+sed -i -e "s/cluster\.name.*$/cluster.name = ${target}/" ${config_file}
 node_name=$(hostname)
-sed -i -e "s/node\.name.*$/node.name = ${node_name}/" ${build_path}ikats/core/config/ikats.conf
+sed -i -e "s/node\.name.*$/node.name = ${node_name}/" ${config_file}
 
 # Add spark lib to pythonpath
 echo "    ${spark_home}python" > add.txt
@@ -321,30 +341,26 @@ echo -e "${YELLOW}SPARK_HOME set to ${SPARK_HOME}${OFF}"
 if test ${run_gunicorn} == true
 then
    
+   cd ${build_path}ikats/processing
+
    # Migrate
    echo -e "\n${YELLOW}Running Django migration${OFF}"
-   ${build_path}bin/django migrate --settings=ikats_processing.${buildout_settings_target} || exit 3;
+   ${build_path}bin/python manage.py migrate --settings=ikats_processing.${buildout_settings_target} || exit 3;
 
    echo -e "\n${YELLOW}Starting Gunicorn${OFF}"
 
-   # Killing old gunicorn processes
-   ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | xargs -i kill -9 {}
-   
+   # Killing old Gunicorn processes
+   ps -A -o pid,args | grep 'gunicorn.*ikats' | grep -v grep | awk '{ print $1 }' | xargs -i kill -9 {}
+
    # Just wait a bit to let the process to be killed
    sleep 3;
 
-   if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -ne 0
-   then
-      echo -e "${RED}IMPOSSIBLE TO KILL GUNICORN !!!!${OFF}"
-      exit 4;
-   fi
-
-   # Starting new gunicorn
+   # Starting new Gunicorn
    my_ip=`hostname -i| sed 's/ //g'`
    ${build_path}bin/gunicorn-with-settings -c ${root_path}gunicorn.py.ini --bind $my_ip:8000 ikats_processing.wsgi:application --log-file ${log_path}ikats_gunicorn.log
-   
-   # Test if gunicorn well started
-   if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -eq 0
+
+   # Test if Gunicorn well started
+   if test `ps -A -o pid,args | grep 'gunicorn.*ikats' | grep -v grep | awk '{ print $1 }' | wc -l` -eq 0
    then
       echo -e "${RED}Gunicorn can't be started${OFF}"
       exit 4;
