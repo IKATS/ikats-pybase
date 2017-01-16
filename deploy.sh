@@ -151,8 +151,12 @@ echo -e "${YELLOW}Hostname = $host${OFF} "
 case ${target} in
    "int")
       buildout_settings_target="settings.int"
-      opentsdb_ip="172.28.15.85"
+      opentsdb_r_ip="172.28.15.85"
+      opentsdb_r_port="4242"
+      opentsdb_w_ip="172.28.15.85"
+      opentsdb_w_port="4242"
       tdm_ip="172.28.15.83"
+      tdm_port="80"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -166,8 +170,12 @@ case ${target} in
       ;;
    "preprod")
       buildout_settings_target="settings.preprod"
-      opentsdb_ip="172.28.15.90"
+      opentsdb_r_ip="172.28.15.90"
+      opentsdb_r_port="4242"
+      opentsdb_w_ip="172.28.15.90"
+      opentsdb_w_port="4242"
       tdm_ip="172.28.15.88"
+      tdm_port="80"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -181,8 +189,12 @@ case ${target} in
       ;;
    "local")
       buildout_settings_target="settings"
-      opentsdb_ip="172.28.15.81"
-      tdm_ip="172.28.15.83"
+      opentsdb_r_ip="127.0.0.1"
+      opentsdb_r_port="4242"
+      opentsdb_w_ip="127.0.0.1"
+      opentsdb_w_port="4242"
+      tdm_ip="127.0.0.1"
+      tdm_port="80"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -192,8 +204,12 @@ case ${target} in
       ;;
    "docker")
       buildout_settings_target="settings.docker"
-      opentsdb_ip="127.0.0.1"
+      opentsdb_r_ip="127.0.0.1"
+      opentsdb_r_port="4242"
+      opentsdb_w_ip="127.0.0.1"
+      opentsdb_w_port="4243"
       tdm_ip="127.0.0.1"
+      tdm_port="8080"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -274,12 +290,16 @@ sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" build
 
 # Overriding ikats config
 echo "Configuring the node"
-sed -i -e "s/opentsdb\.read\.ip.*$/opentsdb.read.ip = ${opentsdb_ip}/" ${build_path}ikats/core/config/ikats.conf
-sed -i -e "s/opentsdb\.write\.ip.*$/opentsdb.write.ip = ${opentsdb_ip}/" ${build_path}ikats/core/config/ikats.conf
-sed -i -e "s/tdm\.ip.*$/tdm.ip = ${tdm_ip}/" ${build_path}ikats/core/config/ikats.conf
-sed -i -e "s/cluster\.name.*$/cluster.name = ${target}/" ${build_path}ikats/core/config/ikats.conf
+config_file=${build_path}ikats/core/config/ikats.conf
+sed -i -e "s/opentsdb\.read\.ip.*$/opentsdb.read.ip = ${opentsdb_r_ip}/" ${config_file}
+sed -i -e "s/opentsdb\.read\.port.*$/opentsdb.read.port = ${opentsdb_r_port}/" ${config_file}
+sed -i -e "s/opentsdb\.write\.ip.*$/opentsdb.write.ip = ${opentsdb_w_ip}/" ${config_file}
+sed -i -e "s/opentsdb\.write\.port.*$/opentsdb.write.port = ${opentsdb_w_port}/" ${config_file}
+sed -i -e "s/tdm\.ip.*$/tdm.ip = ${tdm_ip}/" ${config_file}
+sed -i -e "s/tdm\.port.*$/tdm.port = ${tdm_port}/" ${config_file}
+sed -i -e "s/cluster\.name.*$/cluster.name = ${target}/" ${config_file}
 node_name=$(hostname)
-sed -i -e "s/node\.name.*$/node.name = ${node_name}/" ${build_path}ikats/core/config/ikats.conf
+sed -i -e "s/node\.name.*$/node.name = ${node_name}/" ${config_file}
 
 # Add spark lib to pythonpath
 echo "    ${spark_home}python" > add.txt
