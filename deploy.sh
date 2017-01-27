@@ -210,6 +210,10 @@ case ${target} in
       opentsdb_w_port="4243"
       tdm_ip="127.0.0.1"
       tdm_port="8080"
+      if test ${custom_spark_home} == false
+      then
+         spark_home=/opt/spark
+      fi
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -239,7 +243,7 @@ then
 fi
 
 echo -e "\n${YELLOW}Generating path${OFF}"
-[ $keep_previous_buildout=false ] && rm -rf ${build_path};
+[ ${keep_previous_buildout}=false ] && rm -rf ${build_path};
 mkdir -p ${build_path} || exit 1;
 mkdir -p ${log_path} || exit 1;
 
@@ -302,7 +306,7 @@ node_name=$(hostname)
 sed -i -e "s/node\.name.*$/node.name = ${node_name}/" ${config_file}
 
 # Add spark lib to pythonpath
-echo "    ${spark_home}python" > add.txt
+echo "    ${spark_home}/python" > add.txt
 sed -i -e '/extra-paths =/r add.txt' buildout.cfg
 rm add.txt
 
@@ -356,8 +360,8 @@ then
    sleep 3;
 
    # Starting new Gunicorn
-   my_ip=`hostname -i| sed 's/ //g'`
-   ${build_path}bin/gunicorn-with-settings -c ${root_path}gunicorn.py.ini --bind $my_ip:8000 ikats_processing.wsgi:application --log-file ${log_path}ikats_gunicorn.log
+   my_ip=`hostname -I| sed 's/ .*//g'`
+   ${build_path}bin/gunicorn-with-settings -c ${root_path}gunicorn.py.ini --bind ${my_ip}:8000 ikats_processing.wsgi:application --log-file ${log_path}ikats_gunicorn.log
 
    # Test if Gunicorn well started
    if test `ps -A -o pid,args | grep 'gunicorn.*ikats' | grep -v grep | awk '{ print $1 }' | wc -l` -eq 0
