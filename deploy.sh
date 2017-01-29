@@ -86,7 +86,7 @@ do
          echo -e "                       Default: don't run gunicorn"
          echo -e ""
          echo -e "   -t|--target <platform>"
-         echo -e "                       Specify the current platform [int|preprod|local|pic]"
+         echo -e "                       Specify the current platform [int|preprod|preprod-b|local|pic]"
          echo -e "                       Default: local"
          echo -e ""
          echo -e "   -p|--build-path <path>"
@@ -168,7 +168,26 @@ case ${target} in
       fi
       log_path=/home/ikats/logs/
       ;;
-   "preprod")
+    "int-b")
+      buildout_settings_target="settings.int-b"
+      opentsdb_r_ip="172.28.15.15"
+      opentsdb_r_port="4242"
+      opentsdb_w_ip="172.28.15.15"
+      opentsdb_w_port="4242"
+      tdm_ip="172.28.15.13"
+      tdm_port="80"
+      if test ${custom_build_path} == false
+      then
+         # Use default build path
+         build_path=/home/ikats/code/
+      fi
+      if test ${custom_spark_home} == false
+      then
+         spark_home=/opt/spark/
+      fi
+      log_path=/home/ikats/logs/
+      ;;
+    "preprod")
       buildout_settings_target="settings.preprod"
       opentsdb_r_ip="172.28.15.90"
       opentsdb_r_port="4242"
