@@ -212,6 +212,7 @@ case ${target} in
       tdm_port="8080"
       if test ${custom_spark_home} == false
       then
+		 # Use default spark path
          spark_home=/opt/spark
       fi
       if test ${custom_build_path} == false
