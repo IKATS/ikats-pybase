@@ -20,7 +20,6 @@ setup(
         'requests>=2.8.1',
         'numpy',
         'scipy',
-        'scikit-learn',
         'py4j',
         'cffi',
     ],
