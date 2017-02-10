@@ -14,7 +14,7 @@ proxy_addr="proxy3.si.c-s.fr:3128"
 target="local"
 # SPARK_HOME environment variable
 custom_spark_home=false
-spark_home=~/tools/spark-1.5.2-bin-hadoop2.6
+spark_home=/opt/spark-1.6.2-bin-hadoop2.6/
 # Don't run gunicorn by default
 run_gunicorn=false
 # Do not keep old eggs
