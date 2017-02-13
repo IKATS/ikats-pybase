@@ -2,7 +2,7 @@
 
 if [[ $USER != 'ikats' ]]
 then
-   echo "This script should be run using ikats user only !!!"
+   echo "This script should be run using ikats user only !!! (user is ${USER})"
 fi
 
 
@@ -14,7 +14,7 @@ proxy_addr="proxy3.si.c-s.fr:3128"
 target="local"
 # SPARK_HOME environment variable
 custom_spark_home=false
-spark_home=~/tools/spark-1.5.2-bin-hadoop2.6
+spark_home=/opt/spark-1.6.2-bin-hadoop2.6/
 # Don't run gunicorn by default
 run_gunicorn=false
 # Do not keep old eggs
@@ -208,11 +208,11 @@ case ${target} in
       ;;
    "local")
       buildout_settings_target="settings"
-      opentsdb_r_ip="127.0.0.1"
+      opentsdb_r_ip="172.28.15.15"
       opentsdb_r_port="4242"
-      opentsdb_w_ip="127.0.0.1"
+      opentsdb_w_ip="172.28.15.15"
       opentsdb_w_port="4242"
-      tdm_ip="127.0.0.1"
+      tdm_ip="172.28.15.13"
       tdm_port="80"
       if test ${custom_build_path} == false
       then
@@ -251,7 +251,7 @@ esac
 # Build path
 eggs_backup_path=eggs
 if test -d ${eggs_backup_path}
-then 
+then
    # Deleting old eggs (former unachieved build)
    rm -rf ${eggs_backup_path}
 fi
@@ -364,7 +364,7 @@ echo -e "${YELLOW}SPARK_HOME set to ${SPARK_HOME}${OFF}"
 # Specific operations for node supporting Django
 if test ${run_gunicorn} == true
 then
-   
+
    cd ${build_path}ikats/processing
 
    # Migrate
@@ -388,10 +388,10 @@ then
    then
       echo -e "${RED}Gunicorn can't be started${OFF}"
       exit 4;
-   else 
+   else
       echo -e "${GREEN}Gunicorn started${OFF}"
    fi
-  
+
 fi
 
 # Exit with nominal status
