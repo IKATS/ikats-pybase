@@ -1,12 +1,12 @@
 #!/bin/bash
 
-if [[ $USER != 'ikats' ]]
+if [[ $(whoami) != 'ikats' ]]
 then
-   echo "This script should be run using ikats user only !!! (user is ${USER})"
+   echo "This script should be run using ikats user only !!! (user is $(whoami))"
 fi
 
 
-root_path=`pwd`/
+root_path=$(pwd)"/"
 proxy_addr="proxy3.si.c-s.fr:3128"
 
 # Default values
@@ -30,7 +30,7 @@ while [[ $# -gt 0 ]]
 do
    key="$1"
 
-   case $key in
+   case ${key} in
       -t|--target)
          target="$2"
          shift
@@ -86,8 +86,7 @@ do
          echo -e "                       Default: don't run gunicorn"
          echo -e ""
          echo -e "   -t|--target <platform>"
-         echo -e "                       Specify the current platform [int|preprod|preprod-b|local|pic]"
-         echo -e "                       Default: local"
+         echo -e "                       Specify the current platform [int|int-b|preprod|local|docker]"
          echo -e ""
          echo -e "   -p|--build-path <path>"
          echo -e "                       Specify a specific build-path"
@@ -168,7 +167,7 @@ case ${target} in
       fi
       log_path=/home/ikats/logs/
       ;;
-    "int-b")
+   "int-b")
       buildout_settings_target="settings.int-b"
       opentsdb_r_ip="172.28.15.15"
       opentsdb_r_port="4242"
@@ -187,7 +186,7 @@ case ${target} in
       fi
       log_path=/home/ikats/logs/
       ;;
-    "preprod")
+   "preprod")
       buildout_settings_target="settings.preprod"
       opentsdb_r_ip="172.28.15.90"
       opentsdb_r_port="4242"
@@ -292,6 +291,7 @@ cp -rf ${sources_path}ikats_django/src/* ${build_path} || exit 1;
 cp ${root_path}setup.py ${build_path} || exit 1;
 cp ${root_path}bootstrap.py ${build_path} || exit 1;
 cp ${root_path}buildout.cfg ${build_path} || exit 1;
+cp ${root_path}gunicorn.py.ini ${build_path} || exit 1;
 
 cd ${build_path}
 
@@ -311,6 +311,8 @@ fi
 # Defining logs path
 ls ${build_path}ikats/processing/ikats_processing/settings/*.py | xargs -i sed -i -e "s@REP_LOGS = .\+@REP_LOGS = \"${log_path}\"@g" {}
 sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" buildout.cfg
+sed -i -e "s@log_path = .*@log_path = \"${log_path}\"@g" gunicorn.py.ini
+cat gunicorn.py.ini | grep log_path
 
 # Overriding ikats config
 echo "Configuring the node"
@@ -381,7 +383,7 @@ then
 
    # Starting new Gunicorn
    my_ip=`hostname -I| sed 's/ .*//g'`
-   ${build_path}bin/gunicorn-with-settings -c ${root_path}gunicorn.py.ini --bind ${my_ip}:8000 ikats_processing.wsgi:application --log-file ${log_path}ikats_gunicorn.log
+   ${build_path}bin/gunicorn-with-settings -c ${build_path}gunicorn.py.ini --bind ${my_ip}:8000 ikats_processing.wsgi:application --log-file ${log_path}ikats_gunicorn.log
 
    # Test if Gunicorn well started
    if test `ps -A -o pid,args | grep 'gunicorn.*ikats' | grep -v grep | awk '{ print $1 }' | wc -l` -eq 0
