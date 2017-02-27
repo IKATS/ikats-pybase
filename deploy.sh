@@ -354,6 +354,12 @@ ${py_cmd} bootstrap.py || exit 2;
 # Run buildout
 ${build_path}bin/buildout || exit 2;
 
+# Unset the proxy environement
+echo -e "${YELLOW}Unsetting the proxy environment${OFF}"
+unset http_proxy
+unset https_proxy
+unset no_proxy
+
 # Cleaning pycache
 echo -e "${YELLOW}Cleaning pycache${OFF}"
 find ${build_path}ikats/ -name "__pycache__" -o -name "*.py[cod]" | xargs -i ls -l {}
