@@ -312,7 +312,6 @@ fi
 ls ${build_path}ikats/processing/ikats_processing/settings/*.py | xargs -i sed -i -e "s@REP_LOGS = .\+@REP_LOGS = \"${log_path}\"@g" {}
 sed -i -e "s/settings = settings/settings = ${buildout_settings_target}/g" buildout.cfg
 sed -i -e "s@log_path = .*@log_path = \"${log_path}\"@g" gunicorn.py.ini
-cat gunicorn.py.ini | grep log_path
 
 # Overriding ikats config
 echo "Configuring the node"
@@ -354,7 +353,7 @@ ${py_cmd} bootstrap.py || exit 2;
 # Run buildout
 ${build_path}bin/buildout || exit 2;
 
-# Unset the proxy environement
+# Unset the proxy environment
 echo -e "${YELLOW}Unsetting the proxy environment${OFF}"
 unset http_proxy
 unset https_proxy
