@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if test $USER != 'ikats'
+if test ${USER} != 'ikats'
 then
    echo "You must be ikats to run this script"
    exit 1;
@@ -18,7 +18,7 @@ GREEN="\033[32m"
 
 # Starting new gunicorn
 my_ip=`hostname -I| sed 's/ //g'`
-/home/ikats/code/bin/gunicorn-with-settings --name ikats --bind $my_ip:8000 --timeout 7200 --workers 13 --log-level=DEBUG ikats_processing.wsgi:application > ${log_path}ikats_gunicorn.log 2>&1 &
+/home/ikats/code/bin/gunicorn-with-settings --name ikats --bind ${my_ip}:8000 --timeout 7200 --workers 13 --log-level=DEBUG ikats_processing.wsgi:application > ${log_path}ikats_gunicorn.log 2>&1 &
 
 if test `ps aux | grep gunicorn-with-settings | grep -v grep | grep ikats_processing | awk '{ print $2 }' | wc -l` -eq 0
 then
