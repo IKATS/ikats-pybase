@@ -227,7 +227,7 @@ case ${target} in
       opentsdb_w_ip="127.0.0.1"
       opentsdb_w_port="4243"
       tdm_ip="127.0.0.1"
-      tdm_port="8080"
+      tdm_port="8180"
       if test ${custom_spark_home} == false
       then
          # Use default spark path
