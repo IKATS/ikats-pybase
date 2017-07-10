@@ -155,7 +155,9 @@ case ${target} in
       opentsdb_w_ip="172.28.15.85"
       opentsdb_w_port="4242"
       tdm_ip="172.28.15.83"
-      tdm_port="80"
+      # Port set to 8180 to prevent (port 80) from converting the request to a unhandled format when forwarding to Tomcat (port 8180)
+      # Nginx configuration should be changed to allow port 80 to be used again
+      tdm_port="8180"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -174,7 +176,9 @@ case ${target} in
       opentsdb_w_ip="172.28.15.15"
       opentsdb_w_port="4242"
       tdm_ip="172.28.15.13"
-      tdm_port="80"
+      # Port set to 8180 to prevent (port 80) from converting the request to a unhandled format when forwarding to Tomcat (port 8180)
+      # Nginx configuration should be changed to allow port 80 to be used again
+      tdm_port="8180"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -193,7 +197,9 @@ case ${target} in
       opentsdb_w_ip="172.28.15.90"
       opentsdb_w_port="4242"
       tdm_ip="172.28.15.88"
-      tdm_port="80"
+      # Port set to 8180 to prevent (port 80) from converting the request to a unhandled format when forwarding to Tomcat (port 8180)
+      # Nginx configuration should be changed to allow port 80 to be used again
+      tdm_port="8180"
       if test ${custom_build_path} == false
       then
          # Use default build path
@@ -212,7 +218,9 @@ case ${target} in
       opentsdb_w_ip="172.28.15.15"
       opentsdb_w_port="4242"
       tdm_ip="172.28.15.13"
-      tdm_port="80"
+      # Port set to 8180 to prevent (port 80) from converting the request to a unhandled format when forwarding to Tomcat (port 8180)
+      # Nginx configuration should be changed to allow port 80 to be used again
+      tdm_port="8180"
       if test ${custom_build_path} == false
       then
          # Use default build path
