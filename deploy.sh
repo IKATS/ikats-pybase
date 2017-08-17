@@ -22,7 +22,6 @@ clean_eggs=false
 # Specify the build path
 custom_build_path=false
 build_path=${root_path}_build/
-proxy_login="undefined"
 no_color=false
 keep_previous_buildout=false
 
@@ -45,10 +44,6 @@ do
          ;;
       --no-color)
          no_color=true
-         ;;
-      -x|--proxy-auth)
-         read proxy_login proxy_password <<< $(echo $2 | sed 's/:/ /')
-         shift
          ;;
       -p|--build-path)
          custom_build_path=true
@@ -91,10 +86,6 @@ do
          echo -e "   -p|--build-path <path>"
          echo -e "                       Specify a specific build-path"
          echo -e "                       Default: depends on target platform"
-         echo -e ""
-         echo -e "   -x|--proxy-auth login:pass"
-         echo -e "                       Specify the proxy credentials"
-         echo -e "                       Default: environment defined"
          echo -e ""
          echo -e "   -s|--spark-home <path>"
          echo -e "                       Specify the SPARK_HOME environment variable defined by <path>"
@@ -304,17 +295,10 @@ cp ${root_path}gunicorn.py.ini ${build_path} || exit 1;
 cd ${build_path}
 
 echo -e "\n${YELLOW}Configuring python${OFF}"
-if test ${proxy_login} != "undefined"
-then
-   # Only if proxy settings are set
-   echo "Using local proxy configuration"
-   export http_proxy=http://${proxy_login}:${proxy_password}@${proxy_addr}
-   export https_proxy=http://${proxy_login}:${proxy_password}@${proxy_addr}
-   export no_proxy=thor.si.c-s.fr
-else
-   echo -e "${YELLOW}Assuming the proxy is set elsewhere${OFF}"
-fi
-
+echo "Setting up proxy configuration"
+export http_proxy=http://${proxy_addr}
+export https_proxy=http://${proxy_addr}
+export no_proxy=thor.si.c-s.fr
 # Overriding default settings
 # Defining logs path
 ls ${build_path}ikats/processing/ikats_processing/settings/*.py | xargs -i sed -i -e "s@REP_LOGS = .\+@REP_LOGS = \"${log_path}\"@g" {}
