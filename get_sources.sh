@@ -7,7 +7,6 @@ root_path=`pwd`/
 # Default values
 branch=master
 git_login="undefined"
-proxy_login="undefined"
 no_color=false
 
 while [[ $# -gt 0 ]]
