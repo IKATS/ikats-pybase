@@ -18,7 +18,7 @@ setup(
     install_requires=[
         'setuptools==33.1.1',
         'requests==2.8.1',
-        'numpy==1.12.1',
+        'numpy==1.11.1',
         'scipy==0.18.1',
         'py4j==0.10.3',
         'cffi==1.8.3',
