@@ -3,18 +3,11 @@ properties([
     string(name: 'CLUSTER', defaultValue: 'INT-B', description: 'Target cluster' ),
     string(name: 'BRANCH_TO_USE', defaultValue: 'master', description: 'Branch to use for ikats' ),
     string(name: 'DEPLOY_BRANCH_TO_USE', defaultValue: '161229', description: 'Branch to use for deploy scripts' ),
-    // text(name: 'ADDITIONAL_CONTRIB', defaultValue: '''#   * url        : the url of the git repository containing the contribution
-    // #   * identifier : branch, tag or sha1 of the commit to use
-    // #   * user       : (optional) Login to use to connect to git repository
-    // #   * pass       : (optional) Password to use to connect to git repository
-    // #
-    // # Format:
-    // # url identifier user pass''', description: ''),
   ])
 ])
 
 // Deploy fast (parallel)
-def FAST_MODE = " &"
+def FAST_MODE = " \u0026"
 
 node{
   echo "\u27A1 Deploying "+params.BRANCH_TO_USE+" on "+params.CLUSTER
@@ -25,10 +18,8 @@ node{
 
     stage('clean') {
       echo "\u27A1 Cleaning"
-      // sh('rm -rf SCM || true')
-      // sh('rm -rf contrib || true')
-      sh('mkdir -p SCM')
-      sh('mkdir -p contrib')
+      sh('rm -rf SCM || true')
+      sh('rm -rf contrib || true')
     }
 
     stage('pull ikats core') {
@@ -56,8 +47,7 @@ node{
       echo "\u27A1 Pulling contributions"
         if (fileExists("SCM/ikats_py_deploy/contrib.sources")) {
           sh('sed -i "/^#/d; /^[ \t]*$/d; s/[ \t]+/ /g" SCM/ikats_py_deploy/contrib.sources')
-          sh('set +x;echo $(cat SCM/ikats_py_deploy/contrib.sources | wc -l)" contribution(s) to load"; set -x')
-          def sources = readFile("SCM/ikats_py_deploy/contrib.sources").split("\n")
+          String[] sources = readFile("SCM/ikats_py_deploy/contrib.sources").split("\\r?\\n")
           dir('contrib'){
             pull_contribs(sources)
           }
@@ -134,21 +124,27 @@ node{
   }
 }
 
-@NonCPS
-def pull_contribs(sources){
-  def repo_number = 1
-  for (source in sources){
+def pull_contribs(sources) {
+  echo "\u27A1 Pulling " + sources.length + " contributions"
+
+  for (i = 0; i < sources.length; i++){
+    String source = sources[i]
     String contrib_url = source.split(" ")[0]
     String contrib_tag = source.split(" ")[1]
-    String contrib_dest_path = repo_number.toString() + "_" + contrib_url.split('/').last()
+    String contrib_dest_path = i.toString().padLeft(4,'0') + "__" + contrib_url.split('/').last() + "__" + contrib_tag
     echo "\u2600 Pulling [${contrib_url}] using tag [${contrib_tag}] to [${contrib_dest_path}]"
+
     checkout([$class: 'GitSCM',
       branches: [[name: "refs/tags/${contrib_tag}"]],
+      polling: false,
+      changelog: false,
       doGenerateSubmoduleConfigurations: false,
-      extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: contrib_dest_path]],
+      extensions: [
+        [$class: 'RelativeTargetDirectory', relativeTargetDir: contrib_dest_path],
+        [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'algo'], [path: 'viz']]],
+        [$class: 'CloneOption', honorRefspec: true, depth: 1, noTags: false, reference: '', shallow: true, timeout: 2]
+      ],
       submoduleCfg: [],
       userRemoteConfigs: [[credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87', url: contrib_url]]])
-    sh("echo '${contrib_url} build ${contrib_tag} ${env.GIT_COMMIT}' >> ${contrib_url}/VERSION")
-    repo_number = repo_number + 1
   }
 }

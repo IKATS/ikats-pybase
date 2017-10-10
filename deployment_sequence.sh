@@ -23,7 +23,7 @@ do
       run_gunicorn="--run-gunicorn"
    fi
 
-   ssh ikats@%%CLUSTER_NODE_PREFIX%%${node} "cd /home/ikats/ikats_py_deploy; chmod +x deploy.sh; ./deploy.sh --spark-home /usr/hdp/current/spark-client/ --target %%CLUSTER_NODE_NAME%% --no-color $run_gunicorn"
+   ssh ikats@%%CLUSTER_NODE_PREFIX%%${node} "cd /home/ikats/ikats_py_deploy; chmod +x deploy.sh; ./deploy.sh --spark-home /usr/hdp/current/spark-client/ --target %%CLUSTER_NODE_NAME%% --no-color $run_gunicorn"%%FAST_MODE%%
    if test $? != 0
    then
      echo "ERROR during deployment"
