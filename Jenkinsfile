@@ -1,8 +1,8 @@
 properties([
   parameters([
-    string(name: 'CLUSTER', defaultValue: 'INT-B', description: 'Target cluster' ),
+    string(name: 'CLUSTER', defaultValue: 'PREPROD', description: 'Target cluster (INT, INT-B, PREPROD)' ),
     string(name: 'BRANCH_TO_USE', defaultValue: 'master', description: 'Branch to use for ikats' ),
-    string(name: 'DEPLOY_BRANCH_TO_USE', defaultValue: '161229', description: 'Branch to use for deploy scripts' ),
+    string(name: 'DEPLOY_BRANCH_TO_USE', defaultValue: 'master', description: 'Branch to use for deploy scripts' ),
   ])
 ])
 
@@ -130,10 +130,10 @@ node{
 
     currentBuild.result = "FAILURE"
 
-    // mail body: "project build error is here: ${env.BUILD_URL}" ,
-    // from: 'ikats_jenkins@c-s.fr',
-    // to: 'fabien.tortora@c-s.fr',
-    // subject: 'Ikats Deploy build failed'
+    mail body: "Project build error is here: ${env.BUILD_URL}" ,
+    from: 'ikats_jenkins@c-s.fr',
+    to: 'fabien.tortora@c-s.fr',
+    subject: 'Build failed'
 
     throw err
   }
@@ -142,25 +142,30 @@ node{
 def pull_contribs(sources) {
   echo "\u27A1 Pulling " + sources.length + " contributions"
 
+  def builders = [:]
   for (i = 0; i < sources.length; i++){
     String source = sources[i]
     String contrib_url = source.split(" ")[0]
     String contrib_tag = source.split(" ")[1]
     String contrib_dest_path = i.toString().padLeft(4,'0') + "__" + contrib_url.split('/').last() + "__" + contrib_tag
-    echo "\u2600 Pulling [${contrib_url}] using tag [${contrib_tag}] to [${contrib_dest_path}]"
 
-    checkout([$class: 'GitSCM',
-      branches: [[name: "refs/tags/${contrib_tag}"]],
-      polling: false,
-      changelog: false,
-      doGenerateSubmoduleConfigurations: false,
-      extensions: [
-        [$class: 'RelativeTargetDirectory', relativeTargetDir: contrib_dest_path],
-        [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'algo'], [path: 'viz']]],
-        [$class: 'CloneOption', honorRefspec: true, depth: 1, noTags: false, reference: '', shallow: true, timeout: 10]
-      ],
-      submoduleCfg: [],
-      userRemoteConfigs: [[credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87', url: contrib_url]]])
-    sh ("echo ${contrib_dest_path} > ${contrib_dest_path}/algo/VERSION")
+    builders[contrib_dest_path] = {
+      echo "\u2600 Pulling [${contrib_url}] using tag [${contrib_tag}] to [${contrib_dest_path}]"
+
+      checkout([$class: 'GitSCM',
+        branches: [[name: "refs/tags/${contrib_tag}"]],
+        polling: false,
+        changelog: false,
+        doGenerateSubmoduleConfigurations: false,
+        extensions: [
+          [$class: 'RelativeTargetDirectory', relativeTargetDir: contrib_dest_path],
+          [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'algo'], [path: 'viz']]],
+          [$class: 'CloneOption', honorRefspec: true, depth: 1, noTags: false, reference: '', shallow: true, timeout: 10]
+        ],
+        submoduleCfg: [],
+        userRemoteConfigs: [[credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87', url: contrib_url]]])
+      sh ("echo ${contrib_dest_path} > ${contrib_dest_path}/algo/VERSION")
+    }
   }
+  parallel builders
 }
