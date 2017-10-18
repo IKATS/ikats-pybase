@@ -11,7 +11,6 @@
 #   * No constraints regarding the number of space(s) between fields
 #   * Don't use tab "\t" as separator between fields
 #   * Lines beginning with "#" are considered as comments, they are skipped
-#   * Lines beginning with "#" are considered as comments, they are skipped
 #
 # Example:
 # https://thor.si.c-s.fr/git/ikats_lig     RHM-1.0

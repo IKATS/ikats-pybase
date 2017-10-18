@@ -1,6 +1,6 @@
 properties([
   parameters([
-    string(name: 'CLUSTER', defaultValue: 'PREPROD', description: 'Target cluster (INT, INT-B, PREPROD)' ),
+    choice(name: 'CLUSTER', choices: "INT-B\nINT\nPREPROD", description: 'Target cluster'),
     string(name: 'BRANCH_TO_USE', defaultValue: 'master', description: 'Branch to use for ikats' ),
     string(name: 'DEPLOY_BRANCH_TO_USE', defaultValue: 'master', description: 'Branch to use for deploy scripts' ),
   ])
