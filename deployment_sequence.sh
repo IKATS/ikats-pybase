@@ -12,6 +12,7 @@ do
    # Copy on all nodes from node 1
    if test "${node}" != "1"
    then
+      ssh ikats@%%CLUSTER_NODE_PREFIX%%${node} rm -rf /home/ikats/ikats_py_deploy
       scp -r /home/ikats/ikats_py_deploy/ ikats@%%CLUSTER_NODE_PREFIX%%${node}:/home/ikats/ > /dev/null
    fi
 
