@@ -32,7 +32,14 @@ node{
           def repo = x // Need to bind the label variable before the closure - can't do 'for (repo in repos)'
           builders[repo] = {
             dir("SCM/${repo}") {
-              git url: "https://thor.si.c-s.fr/git/${repo}", branch: params.BRANCH_TO_USE, credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87'
+              try {
+                git url: "https://thor.si.c-s.fr/git/${repo}", branch: params.BRANCH_TO_USE, credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87'
+              }
+              catch (err) {
+                // Fallback to master branch if specified branch is not found
+                echo "Branch ["+params.BRANCH_TO_USE+"] not found, falling back to [master]"
+                git url: "https://thor.si.c-s.fr/git/${repo}", credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87'
+              }
             }
           }
       }
