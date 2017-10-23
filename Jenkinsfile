@@ -5,7 +5,7 @@ properties([
     string(name: 'DEPLOY_BRANCH_TO_USE', defaultValue: 'master', description: 'Branch to use for deploy scripts' ),
   ])
 ])
-
+// REVIEW#161229 : would be better if credentialsId was a variable
 node{
   echo "\u27A1 Deploying "+params.BRANCH_TO_USE+" on "+params.CLUSTER
 
@@ -64,7 +64,7 @@ node{
     stage('build') {
       echo "\u27A1 Building"
       // Preparing sources
-      sh('mkdir -p SCM/ikats_core SCM/ikats_py_deploy/_sources')
+      sh('mkdir -p SCM/ikats_core SCM/ikats_py_deploy/_sources') // REVIEW#161229 : why trying to re-create ikats_core folder?
       sh('cp -rf SCM/ikats_core SCM/ikats_py_deploy/_sources/ikats_core')
       sh('cp -rf SCM/ikats_algos SCM/ikats_py_deploy/_sources/ikats_algos')
       sh('cp -rf SCM/ikats_django SCM/ikats_py_deploy/_sources/ikats_django')
@@ -76,6 +76,7 @@ node{
       sh('find contrib -maxdepth 3 -mindepth 3 -type d | egrep -v "tmp|.git" | grep algo | xargs -i cp -rf {} SCM/ikats_py_deploy/_sources/ikats_algos/src/ikats/algo/contrib/')
 
       // But not .git directory
+      // REVIEW#161229 : looks like previous line already took .git apart
       sh('rm -rf SCM/ikats_py_deploy/_sources/ikats_algos/src/ikats/algo/contrib/*/.git')
     }
 
@@ -150,7 +151,7 @@ def pull_contribs(sources) {
   echo "\u27A1 Pulling " + sources.length + " contributions"
 
   def builders = [:]
-  for (i = 0; i < sources.length; i++){
+  for (i = 0; i < sources.length; i++){ // REVIEW#161229 : could do a for (x in ...) to be consistent with the rest of the code
     String source = sources[i]
     String contrib_url = source.split(" ")[0]
     String contrib_tag = source.split(" ")[1]
