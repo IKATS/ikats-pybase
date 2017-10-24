@@ -130,6 +130,10 @@ node{
       parallel builders
     }
 
+    stage('Versionning') {
+      build job: 'UPDATE_VERSIONS', parameters: [string(name: 'CLUSTER', value: CLUSTER)]
+    }
+
   }
 
   catch (err) {
