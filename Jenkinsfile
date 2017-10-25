@@ -7,7 +7,7 @@ properties([
 ])
 
 // Credentials identifier for Git connection
-def credentialsIdHash = 'dccb5beb-b71f-4646-bf5d-837b243c0f87'
+credentialsIdHash = 'dccb5beb-b71f-4646-bf5d-837b243c0f87'
 
 node{
   echo "\u27A1 Deploying "+params.BRANCH_TO_USE+" on "+params.CLUSTER
@@ -170,7 +170,7 @@ def pull_contribs(sources) {
           [$class: 'CloneOption', honorRefspec: true, depth: 1, noTags: false, reference: '', shallow: true, timeout: 10]
         ],
         submoduleCfg: [],
-        userRemoteConfigs: [[credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87', url: contrib_url]]])
+        userRemoteConfigs: [[credentialsId: credentialsIdHash, url: contrib_url]]])
       sh ("echo ${contrib_dest_path} > ${contrib_dest_path}/algo/VERSION")
     }
   }
