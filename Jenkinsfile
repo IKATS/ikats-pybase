@@ -6,6 +6,9 @@ properties([
   ])
 ])
 
+// Credentials identifier for Git connection
+credentialsIdHash = 'dccb5beb-b71f-4646-bf5d-837b243c0f87'
+
 node{
   echo "\u27A1 Deploying "+params.BRANCH_TO_USE+" on "+params.CLUSTER
 
@@ -23,7 +26,7 @@ node{
       echo "\u27A1 Pulling Ikats core code"
 
       dir('SCM/ikats_py_deploy') {
-        git url: "https://thor.si.c-s.fr/git/ikats_py_deploy", branch: params.DEPLOY_BRANCH_TO_USE, credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87'
+        git url: "https://thor.si.c-s.fr/git/ikats_py_deploy", branch: params.DEPLOY_BRANCH_TO_USE, credentialsId: credentialsIdHash
       }
 
       def repos = ['ikats_core', 'ikats_algos', 'ikats_django']
@@ -33,12 +36,12 @@ node{
           builders[repo] = {
             dir("SCM/${repo}") {
               try {
-                git url: "https://thor.si.c-s.fr/git/${repo}", branch: params.BRANCH_TO_USE, credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87'
+                git url: "https://thor.si.c-s.fr/git/${repo}", branch: params.BRANCH_TO_USE, credentialsId: credentialsIdHash
               }
               catch (err) {
                 // Fallback to master branch if specified branch is not found
                 echo "Branch ["+params.BRANCH_TO_USE+"] not found, falling back to [master]"
-                git url: "https://thor.si.c-s.fr/git/${repo}", credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87'
+                git url: "https://thor.si.c-s.fr/git/${repo}", credentialsId: credentialsIdHash
               }
             }
           }
@@ -64,7 +67,7 @@ node{
     stage('build') {
       echo "\u27A1 Building"
       // Preparing sources
-      sh('mkdir -p SCM/ikats_core SCM/ikats_py_deploy/_sources')
+      sh('mkdir -p SCM/ikats_py_deploy/_sources')
       sh('cp -rf SCM/ikats_core SCM/ikats_py_deploy/_sources/ikats_core')
       sh('cp -rf SCM/ikats_algos SCM/ikats_py_deploy/_sources/ikats_algos')
       sh('cp -rf SCM/ikats_django SCM/ikats_py_deploy/_sources/ikats_django')
@@ -74,9 +77,6 @@ node{
 
       // Adding new contributions
       sh('find contrib -maxdepth 3 -mindepth 3 -type d | egrep -v "tmp|.git" | grep algo | xargs -i cp -rf {} SCM/ikats_py_deploy/_sources/ikats_algos/src/ikats/algo/contrib/')
-
-      // But not .git directory
-      sh('rm -rf SCM/ikats_py_deploy/_sources/ikats_algos/src/ikats/algo/contrib/*/.git')
     }
 
     stage('catalog update') {
@@ -114,7 +114,7 @@ node{
         def repo = x // Need to bind the label variable before the closure - can't do 'for (repo in repos)'
         builders[repo] = {
           dir("SCM/${repo}") {
-            withCredentials([usernamePassword(credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+            withCredentials([usernamePassword(credentialsId: credentialsIdHash, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
               // Delete local tag
               sh ("git tag -d DEPLOY_${CLUSTER} || true")
               // Apply new tag
@@ -141,10 +141,10 @@ node{
 
     currentBuild.result = "FAILURE"
 
-    mail body: "Project build error is here: ${env.BUILD_URL}" ,
-    from: 'ikats_jenkins@c-s.fr',
-    to: 'fabien.tortora@c-s.fr',
-    subject: 'Build failed'
+    emailext(
+      subject: 'Ikats Python Build Failed',
+      body: '''Project build error is here: ${env.BUILD_URL}''',
+      recipientProviders: [[$class: 'CulpritsRecipientProvider']])
 
     throw err
   }
@@ -174,7 +174,7 @@ def pull_contribs(sources) {
           [$class: 'CloneOption', honorRefspec: true, depth: 1, noTags: false, reference: '', shallow: true, timeout: 10]
         ],
         submoduleCfg: [],
-        userRemoteConfigs: [[credentialsId: 'dccb5beb-b71f-4646-bf5d-837b243c0f87', url: contrib_url]]])
+        userRemoteConfigs: [[credentialsId: credentialsIdHash, url: contrib_url]]])
       sh ("echo ${contrib_dest_path} > ${contrib_dest_path}/algo/VERSION")
     }
   }
