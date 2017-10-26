@@ -108,7 +108,7 @@ node{
     stage('tag') {
       echo "\u27A1 Tagging Deployed version"
 
-      def repos = ['ikats_core', 'ikats_algos', 'ikats_django']
+      def repos = ['ikats_core', 'ikats_algos', 'ikats_django', 'ikats_py_deploy']
       def builders = [:]
       for (x in repos) {
         def repo = x // Need to bind the label variable before the closure - can't do 'for (repo in repos)'
@@ -131,7 +131,7 @@ node{
     }
 
     stage('Versionning') {
-      build job: 'UPDATE_VERSIONS', parameters: [string(name: 'CLUSTER', value: CLUSTER)]
+      build job: 'UPDATE_VERSIONS', parameters: [string(name: 'CLUSTER', value: CLUSTER)], wait: false
     }
 
   }
