@@ -8,7 +8,7 @@ fi
 
 root_path=$(pwd)"/"
 proxy_addr="proxy3.si.c-s.fr:3128"
-
+skip_migration=false
 # Default values
 # Target
 target="local"
@@ -35,8 +35,14 @@ do
          target="$2"
          shift
          ;;
-      -k|--keep)
-         keep_previous_buildout=true
+         --skip-migration)
+            skip_migration=true
+            ;;
+        --expose)
+           export_to_public=true
+           ;;
+       -k|--keep)
+          keep_previous_buildout=true
          ;;
       -s|--spark-home)
          custom_spark_home=true
@@ -246,6 +252,16 @@ case ${target} in
       fi
       log_path=/logs/
       ;;
+      "environ")
+         buildout_settings_target="settings.environ"
+         opentsdb_r_ip=$OPENTSDB_READ_HOST
+         opentsdb_r_port=$OPENTSDB_READ_PORT
+         opentsdb_w_ip=$OPENTSDB_WRITE_HOST
+         opentsdb_w_port=$OPENTSDB_WRITE_PORT
+         tdm_ip=$TDM_HOST
+         tdm_port=$TDM_PORT
+         log_path=/logs/
+         ;;
    *)
       # Unknown Target
       echo -e "--> Unknown target [$1] !"
@@ -325,6 +341,7 @@ sed -i -e "s/opentsdb\.write\.port.*$/opentsdb.write.port = ${opentsdb_w_port}/"
 sed -i -e "s/tdm\.ip.*$/tdm.ip = ${tdm_ip}/" ${config_file}
 sed -i -e "s/tdm\.port.*$/tdm.port = ${tdm_port}/" ${config_file}
 sed -i -e "s/cluster\.name.*$/cluster.name = ${target}/" ${config_file}
+sed -i    "s/spark.url=.*/spark.url=$SPARK_MASTER/g" ${config_file}
 node_name=$(hostname)
 sed -i -e "s/node\.name.*$/node.name = ${node_name}/" ${config_file}
 
@@ -377,9 +394,12 @@ then
    cd ${build_path}ikats/processing
 
    # Migrate
-   echo -e "\n${YELLOW}Running Django migration${OFF}"
-   ${build_path}bin/python manage.py migrate --settings=ikats_processing.${buildout_settings_target} || exit 3;
 
+   if [ "$skip_migration" = false ]
+   then
+     echo -e "\n${YELLOW}Running Django migration${OFF}"
+     ${build_path}bin/python manage.py migrate --settings=ikats_processing.${buildout_settings_target} || exit 3;
+   fi
    echo -e "\n${YELLOW}Starting Gunicorn${OFF}"
 
    # Killing old Gunicorn processes
@@ -388,10 +408,16 @@ then
    # Just wait a bit to let the process to be killed
    sleep 3;
 
-   # Starting new Gunicorn
-   my_ip=`hostname -I| sed 's/ .*//g'`
-   ${build_path}bin/gunicorn-with-settings -c ${build_path}gunicorn.py.ini --bind ${my_ip}:8000 ikats_processing.wsgi:application --log-file ${log_path}ikats_gunicorn.log
 
+   # Starting new Gunicorn
+   if [ "$export_to_public" = true ]
+   then
+     my_ip='0.0.0.0'
+   else
+     my_ip=`hostname -I| sed 's/ .*//g'`
+   fi
+   ${build_path}bin/gunicorn-with-settings -c ${build_path}gunicorn.py.ini --bind ${my_ip}:8000 ikats_processing.wsgi:application --log-file - || bash
+   bash
    # Test if Gunicorn well started
    if test `ps -A -o pid,args | grep 'gunicorn.*ikats' | grep -v grep | awk '{ print $1 }' | wc -l` -eq 0
    then
