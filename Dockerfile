@@ -23,6 +23,8 @@ RUN apt update \
     liblapacke-dev \
   && apt-get clean
 
+RUN pip install --proxy $http_proxy pyspark
+
 RUN \
   mkdir /ikats_py_deploy && \
   mkdir /build && \
