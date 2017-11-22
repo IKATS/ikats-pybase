@@ -1,5 +1,4 @@
-FROM python:3.6
-
+FROM 172.28.15.207:5000/python3-spark
 MAINTAINER Germain GAU <germain.gau@c-s.fr>
 
 ARG http_proxy=""
@@ -23,7 +22,7 @@ RUN apt update \
     liblapacke-dev \
   && apt-get clean
 
-RUN pip install --proxy $http_proxy pyspark
+# RUN pip install --proxy $http_proxy pyspark
 
 RUN \
   mkdir /ikats_py_deploy && \

@@ -69,6 +69,7 @@ chmod +x deploy.sh
   --build-path /build/ \
   --target environ \
   --skip-migration \
+  --spark-home /opt/spark-1.6.1 \
   --expose \
   -r
 
