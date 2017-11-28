@@ -1,3 +1,4 @@
+# Review#164674 Static IP is not a good idea
 FROM 172.28.15.207:5000/python3-spark
 MAINTAINER Germain GAU <germain.gau@c-s.fr>
 
