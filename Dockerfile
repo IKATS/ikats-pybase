@@ -4,15 +4,8 @@
 FROM sequenceiq/spark:1.6.0
 MAINTAINER Germain GAU <germain.gau@c-s.fr>
 
-ARG http_proxy=""
-ARG https_proxy=""
-
 RUN groupadd -r ikats &&\
 useradd -r -g ikats -d /home/ikats -s /sbin/nologin -c "Docker image user" ikats
-
-# Set the proxies for apt
-RUN (test -z "$http_proxy" || echo "Acquire::http::Proxy \"$http_proxy\";" >> /etc/apt/apt.conf) && \
-    (test -z "$https_proxy" || echo "Acquire::https::Proxy \"$https_proxy\";" >> /etc/apt/apt.conf)
 
 RUN apt update \
   && apt install -y \
@@ -24,8 +17,6 @@ RUN apt update \
     liblapacke \
     liblapacke-dev \
   && apt-get clean
-
-# RUN pip install --proxy $http_proxy pyspark
 
 RUN \
   mkdir /ikats_py_deploy && \
