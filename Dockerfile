@@ -1,5 +1,7 @@
-# Review#164674 Static IP is not a good idea
-FROM 172.28.15.207:5000/python3-spark
+
+# Note : Current clusters use Spark v1.6.2, but the maintener
+# stopped updating Docker image after 1.6.0
+FROM sequenceiq/spark:1.6.0
 MAINTAINER Germain GAU <germain.gau@c-s.fr>
 
 ARG http_proxy=""
