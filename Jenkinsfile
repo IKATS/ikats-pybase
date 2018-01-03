@@ -3,6 +3,7 @@ properties([
     choice(name: 'CLUSTER', choices: "INT-B\nINT\nPREPROD", description: 'Target cluster'),
     string(name: 'BRANCH_TO_USE', defaultValue: 'master', description: 'Branch to use for ikats' ),
     string(name: 'DEPLOY_BRANCH_TO_USE', defaultValue: 'master', description: 'Branch to use for deploy scripts' ),
+    booleanParam(name: 'INCLUDE_CONTRIB', defaultValue: true, description: 'Include contributions to this deployment')
   ])
 ])
 
@@ -50,7 +51,8 @@ node{
     }
 
     stage('pull contributions') {
-      echo "\u27A1 Pulling contributions"
+      if (params.INCLUDE_CONTRIB) {
+        echo "\u27A1 Pulling contributions"
         if (fileExists("SCM/ikats_py_deploy/contrib.sources")) {
           // Cleanup file from comments to keep only useful information
           sh('sed -i "/^#/d; /^[ \t]*$/d; s/[ \t]+/ /g" SCM/ikats_py_deploy/contrib.sources')
@@ -62,6 +64,10 @@ node{
         else{
           echo "\u27A1 No contribution to load \u2713"
         }
+      }
+      else {
+        echo "\u27A1 Skipping contributions"
+      }
     }
 
     stage('build') {
