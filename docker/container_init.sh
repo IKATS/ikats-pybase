@@ -71,6 +71,7 @@ chmod +x deploy.sh
   --skip-migration \
   --spark-home /opt/spark-1.6.1 \
   --expose \
+  --no-proxy \
   -r
 
 sleep infinity
