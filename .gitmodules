@@ -1,0 +1,9 @@
+[submodule "_sources/ikats_algos"]
+	path = _sources/ikats_algos
+	url = https://thor.si.c-s.fr/git/ikats_algos
+[submodule "_sources/ikats_core"]
+	path = _sources/ikats_core
+	url = https://thor.si.c-s.fr/git/ikats_core
+[submodule "_sources/ikats_django"]
+	path = _sources/ikats_django
+	url = https://thor.si.c-s.fr/git/ikats_django
