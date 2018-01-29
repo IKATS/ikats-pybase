@@ -16,8 +16,10 @@ RUN apt-get update && \
     git \
     libpq-dev
 
-RUN pip3 install \
-  pyspark
+RUN pip3 install --upgrade pip
+COPY requirements.txt /tmp
+WORKDIR /tmp
+RUN pip3 install -r requirements.txt
 
 RUN \
   groupadd \
