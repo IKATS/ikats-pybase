@@ -46,6 +46,6 @@ EXPOSE 8000
 
 ADD . /ikats_py_deploy
 
-WORKDIR /ikats_py_deploy/docker
+WORKDIR /ikats_py_deploy
 
 ENTRYPOINT ["bash", "container_init.sh"]
