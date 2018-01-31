@@ -56,6 +56,9 @@ then
    PATH=$PATH:/usr/local/bin/
 fi
 
+cd ${IKATS_PATH}/ikats/processing
+python3 manage.py migrate --settings=ikats_processing.settings.docker
+
 # Starting new Gunicorn
 echo -e "Starting Gunicorn"
 
