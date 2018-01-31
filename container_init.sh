@@ -47,7 +47,7 @@ sed -i -e "s/opentsdb\.write\.ip.*$/opentsdb.write.ip = ${OPENTSDB_WRITE_HOST}/"
 sed -i -e "s/opentsdb\.write\.port.*$/opentsdb.write.port = ${OPENTSDB_WRITE_PORT}/" ${config_file}
 sed -i -e "s/tdm\.ip.*$/tdm.ip = ${TDM_HOST}/" ${config_file}
 sed -i -e "s/tdm\.port.*$/tdm.port = ${TDM_PORT}/" ${config_file}
-sed -i    "s/spark.url=.*/spark.url=${SPARK_MASTER}/g" ${config_file}
+sed -i -e "s/spark\.url.*$/spark.url = ${SPARK_MASTER}[*]/" ${config_file}
 node_name=$(hostname)
 sed -i -e "s/node\.name.*$/node.name = ${node_name}/" ${config_file}
 
