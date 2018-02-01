@@ -62,6 +62,9 @@ python3 manage.py migrate --settings=ikats_processing.settings.docker
 # Starting new Gunicorn
 echo -e "Starting Gunicorn"
 
+# Updating PYTHONPATH with django, pyspark, ikats
+export PYTHONPATH=${PYTHONPATH}:${SPARK_HOME}/python:${IKATS_PATH}:${IKATS_PATH}/algo/contrib:${IKATS_PATH}/processing
+
 # Gunicorn launched foreground (daemon false)
 gunicorn \
     --chdir ${IKATS_PATH}/ikats/processing \
@@ -70,15 +73,12 @@ gunicorn \
     --env SPARK_HOME=${SPARK_HOME} \
     --env PYSPARK_PYTHON=${PYSPARK_PYTHON} \
     --env DJANGO_SETTINGS_MODULE=ikats_processing.settings.docker \
-    --pythonpath "${IKATS_PATH}/processing" \
-    --pythonpath "${IKATS_PATH}/algo/contrib" \
-    --pythonpath "${IKATS_PATH}" \
-    --bind 0.0.0.0:8000 ikats_processing.wsgi
+    --env PYTHONPATH=${PYTHONPATH} \
+    --bind 0.0.0.0:${VIRTUAL_PORT} ikats_processing.wsgi
 
 # Print logs to stdout
 # (temporary trick)
 #tail -f /logs/ikats_django.log &
 tail -f /logs/ikats_processing.log &
-tail -f /logs/ikats_gunicorn_error.log &
 
 sleep infinity
