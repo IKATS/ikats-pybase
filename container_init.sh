@@ -74,7 +74,7 @@ gunicorn \
     --env PYSPARK_PYTHON=${PYSPARK_PYTHON} \
     --env DJANGO_SETTINGS_MODULE=ikats_processing.settings.docker \
     --env PYTHONPATH=${PYTHONPATH} \
-    --bind 0.0.0.0:${VIRTUAL_PORT} ikats_processing.wsgi
+    --bind 0.0.0.0:${GUNICORN_PORT} ikats_processing.wsgi
 
 # Print logs to stdout
 # (temporary trick)

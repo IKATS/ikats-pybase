@@ -21,3 +21,4 @@ scipy==0.17.1
 setuptools==33.1.1
 six==1.10.0
 psycopg2==2.7.3.1
+django-cors-headers==2.1.0
