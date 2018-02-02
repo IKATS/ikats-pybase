@@ -28,7 +28,8 @@ env_variables=(
   "OPENTSDB_WRITE_PORT"
   "TDM_HOST"
   "TDM_PORT"
-  "SPARK_MASTER"
+  "SPARK_MASTER_HOST"
+  "SPARK_MASTER_PORT"
   "POSTGRES_HOST"
   "POSTGRES_PORT"
 )
@@ -47,7 +48,7 @@ sed -i -e "s/opentsdb\.write\.ip.*$/opentsdb.write.ip = ${OPENTSDB_WRITE_HOST}/"
 sed -i -e "s/opentsdb\.write\.port.*$/opentsdb.write.port = ${OPENTSDB_WRITE_PORT}/" ${config_file}
 sed -i -e "s/tdm\.ip.*$/tdm.ip = ${TDM_HOST}/" ${config_file}
 sed -i -e "s/tdm\.port.*$/tdm.port = ${TDM_PORT}/" ${config_file}
-#sed -i -e "s/spark\.url.*$/spark.url = spark://${SPARK_MASTER}" ${config_file}
+sed -i -e "s/spark\.url.*$/spark.url = spark:\/\/${SPARK_MASTER_HOST}:${SPARK_MASTER_PORT}/" ${config_file}
 node_name=$(hostname)
 sed -i -e "s/node\.name.*$/node.name = ${node_name}/" ${config_file}
 
@@ -56,29 +57,15 @@ then
    PATH=$PATH:/usr/local/bin/
 fi
 
-cd ${IKATS_PATH}/ikats/processing
-python3 manage.py migrate --settings=ikats_processing.settings.docker
-
-# Starting new Gunicorn
-echo -e "Starting Gunicorn"
-
 # Updating PYTHONPATH with django, pyspark, ikats
 export PYTHONPATH=${PYTHONPATH}:${SPARK_HOME}/python:${IKATS_PATH}:${IKATS_PATH}/algo/contrib:${IKATS_PATH}/processing
 
-# Gunicorn launched foreground (daemon false)
-gunicorn \
-    --chdir ${IKATS_PATH}/ikats/processing \
-    --config ${IKATS_PATH}/gunicorn.py.ini \
-    --error-logfile /logs/ikats_gunicorn_error.log \
-    --env SPARK_HOME=${SPARK_HOME} \
-    --env PYSPARK_PYTHON=${PYSPARK_PYTHON} \
-    --env DJANGO_SETTINGS_MODULE=ikats_processing.settings.docker \
-    --env PYTHONPATH=${PYTHONPATH} \
-    --bind 0.0.0.0:${GUNICORN_PORT} ikats_processing.wsgi
-
-# Print logs to stdout
-# (temporary trick)
-#tail -f /logs/ikats_django.log &
-tail -f /logs/ikats_processing.log &
-
-sleep infinity
+# Choose between Spark and Gunicorn
+if [[ -z ${SPARK_MODE} ]]
+then
+  # SPARK_MODE is not defined as environment variable, start gunicorn
+  bash ${IKATS_PATH}/start_gunicorn.sh
+else
+  # SPARK_MODE is defined (master or slave), start spark
+  bash /start_spark.sh
+fi
