@@ -1,7 +1,4 @@
-#FROM hub.ops.ikats.org/ikats-spark
-# TODO realign with registry
-FROM ikats-spark
-
+FROM hub.ops.ikats.org/ikats-spark
 
 RUN pip3 install --upgrade pip
 ADD requirements.txt /tmp
