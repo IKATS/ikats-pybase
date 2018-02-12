@@ -1,3 +1,19 @@
+properties([parameters(
+  [
+    credentials(
+      name: 'REGISTRY_CREDENTIALS',
+      credentialType: 'com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl',
+      defaultValue: 'DOCKER_REGISTRY',
+      description: '',
+      required: true),
+    string(
+      name: 'REGISTRY_URI',
+      defaultValue: 'https://hub.ops.ikats.org',
+      description: 'Registry this job will push images to'
+    )
+  ]
+)])
+
 node('docker') {
 
     stage('Clone repository') {
