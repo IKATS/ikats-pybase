@@ -38,7 +38,7 @@ node('docker') {
         docker.withRegistry("${env.REGISTRY_URI}", "${env.REGISTRY_CREDENTIALS}") {
           ikats_pybase.push("${env.BRANCH_NAME}_${env.CHANGE_AUTHOR}_${env.BUILD_ID}")
           ikats_pybase.push("${env.BRANCH_NAME}_latest")
-          if (${env.BRANCH_NAME} == "master") {
+          if ("${env.BRANCH_NAME}" == "master") {
             ikats_pybase.push("latest")
           }
         }
