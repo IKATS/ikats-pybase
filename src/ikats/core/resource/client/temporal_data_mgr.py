@@ -1192,7 +1192,7 @@ class TemporalDataMgr(RestClient):
         # We have to divide in 'chunks' to not exceed the URL size limit.
         # Commonly, this size is 8KB long (8192 chars)
         # The chunk_size is set to a value which approach this limit with a safety coeff
-        chunk_size = 160
+        chunk_size = 100
         for i in range(0, len(ts_list), chunk_size):
             working_ts_list = ts_list[i:i + chunk_size]
 
@@ -1281,7 +1281,7 @@ class TemporalDataMgr(RestClient):
         # We have to divide in 'chunks' to not exceed the URL size limit.
         # Commonly, this size is 8KB long (8192 chars)
         # The chunk_size is set to a value which approach this limit with a safety coeff
-        chunk_size = 160
+        chunk_size = 100
         for i in range(0, len(ts_list), chunk_size):
             working_ts_list = ts_list[i:i + chunk_size]
 
