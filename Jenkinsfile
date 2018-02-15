@@ -20,7 +20,7 @@ node('docker') {
 
     stage('Push image') {
         docker.withRegistry("${env.REGISTRY_ADDRESS}", 'DOCKER_REGISTRY') {
-          ikats_pybase.push("${env.BRANCH_NAME}_${env.BUILD_ID}")
+          ikats_pybase.push("${env.BRANCH_NAME}_${GIT_COMMIT}")
           ikats_pybase.push("${env.BRANCH_NAME}_latest")
           if ("${env.BRANCH_NAME}" == "master") {
             ikats_pybase.push("latest")
