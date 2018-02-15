@@ -1,9 +1,11 @@
-FROM hub.ops.ikats.org/ikats-spark
+ARG DOCKER_FROM_TAG=latest
+FROM hub.ops.ikats.org/ikats-spark:$DOCKER_FROM_TAG
 
-RUN pip3 install --upgrade pip
-ADD requirements.txt /tmp
+ADD assets/requirements.txt /tmp
 WORKDIR /tmp
-RUN pip3 install -r requirements.txt
+RUN pip3 install --upgrade pip \
+  && pip3 install -r requirements.txt \
+  && rm requirements.txt
 
 RUN \
   groupadd \
@@ -11,7 +13,6 @@ RUN \
   useradd \
     -r \
     -g ikats \
-    -d /home/ikats \
     -s /sbin/nologin \
     -c "Docker image user" \
     ikats
@@ -24,17 +25,15 @@ RUN \
   mkdir /logs && \
   chown -R ikats:ikats /logs
 
-ADD _sources/ikats_core/src/ ${IKATS_PATH}
-ADD _sources/ikats_algos/src/ ${IKATS_PATH}
-ADD _sources/ikats_django/src/ ${IKATS_PATH}
+ADD src/ ${IKATS_PATH}
 
-ADD gunicorn.py.ini ${IKATS_PATH}
-ADD container_init.sh ${IKATS_PATH}
-ADD start_gunicorn.sh ${IKATS_PATH}
+ADD assets/gunicorn.py.ini ${IKATS_PATH}
+ADD assets/container_init.sh ${IKATS_PATH}
+ADD assets/start_gunicorn.sh ${IKATS_PATH}
 
 RUN chown -R ikats:ikats ${IKATS_PATH}
 
+WORKDIR ${IKATS_PATH}
 USER ikats
 EXPOSE 8000
-WORKDIR ${IKATS_PATH}
 ENTRYPOINT ["bash", "container_init.sh"]
