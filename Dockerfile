@@ -1,5 +1,4 @@
-ARG DOCKER_FROM_TAG=latest
-FROM hub.ops.ikats.org/ikats-spark:$DOCKER_FROM_TAG
+FROM hub.ops.ikats.org/ikats-spark
 
 ADD assets/requirements.txt /tmp
 WORKDIR /tmp
