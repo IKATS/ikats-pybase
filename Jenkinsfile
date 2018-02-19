@@ -2,7 +2,8 @@ node('docker') {
 
     stage('Clone repository') {
         /* Let's make sure we have the repository cloned to our workspace */
-        checkout scm
+        scmenv = checkout scm
+        GIT_COMMIT = scmenv.GIT_COMMIT.take(7)
     }
 
     stage('Documentation') {
@@ -20,7 +21,7 @@ node('docker') {
 
     stage('Push image') {
         docker.withRegistry("${env.REGISTRY_ADDRESS}", 'DOCKER_REGISTRY') {
-          ikats_pybase.push("${env.BRANCH_NAME}_${env.BUILD_ID}")
+          ikats_pybase.push("${env.BRANCH_NAME}_${GIT_COMMIT}")
           ikats_pybase.push("${env.BRANCH_NAME}_latest")
           if ("${env.BRANCH_NAME}" == "master") {
             ikats_pybase.push("latest")
