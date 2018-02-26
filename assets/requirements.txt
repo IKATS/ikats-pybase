@@ -7,7 +7,6 @@ greenlet==0.4.12
 gunicorn==19.3.0
 httpretty==0.8.14
 mccabe==0.5.2
-mock==2.0.0
 natsort==5.0.2
 numpy==1.11.0
 pbr==1.10.0
