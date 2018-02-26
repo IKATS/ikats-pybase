@@ -57,8 +57,8 @@ then
    PATH=$PATH:/usr/local/bin/
 fi
 
-# Updating PYTHONPATH with django, pyspark, ikats
-export PYTHONPATH=${PYTHONPATH}:${SPARK_HOME}/python:${IKATS_PATH}:${IKATS_PATH}/algo/contrib:${IKATS_PATH}/processing
+# Updating PYTHONPATH
+source ikats.env
 
 # Choose between Spark and Gunicorn
 if [[ -z ${SPARK_MODE} ]]

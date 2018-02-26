@@ -29,6 +29,7 @@ ADD src/ ${IKATS_PATH}
 ADD assets/gunicorn.py.ini ${IKATS_PATH}
 ADD assets/container_init.sh ${IKATS_PATH}
 ADD assets/start_gunicorn.sh ${IKATS_PATH}
+ADD assets/ikats.env ${IKATS_PATH}
 
 RUN chown -R ikats:ikats ${IKATS_PATH}
 
