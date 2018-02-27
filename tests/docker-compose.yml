@@ -41,6 +41,34 @@ services:
       - opentsdb
       - datamodel-api
 
+  spark-worker-1:
+    network_mode: bridge
+    build:
+      context: ../
+    container_name: tests_spark-worker
+    links:
+      - spark-master
+      - opentsdb
+      - datamodel-api
+      - pgsql.dev
+    depends_on:
+      - spark-master
+    user: root
+    ports:
+      - "10001:8081"
+    environment:
+      OPENTSDB_READ_HOST: opentsdb
+      OPENTSDB_READ_PORT: 4242
+      OPENTSDB_WRITE_HOST: opentsdb
+      OPENTSDB_WRITE_PORT: 4242
+      POSTGRES_HOST: pgsql.dev
+      POSTGRES_PORT: 5432
+      SPARK_MASTER_HOST: spark-master
+      SPARK_MASTER_PORT: 7077
+      SPARK_MODE: slave
+      TDM_HOST: datamodel-api
+      TDM_PORT: 8080
+
   datamodel-api:
     network_mode: bridge
     image: ${IMAGE_DATAMODEL}
@@ -123,31 +151,3 @@ services:
       TSD_CONF_tsd__storage__flush_interval: 500
       TSD_CONF_tsd__storage__fix_duplicates: "true"
       TSD_CONF_tsd__http__request__cors_domains: "*"
-
-
-  spark-worker-1:
-    network_mode: bridge
-    image: ${IMAGE_PYBASE}
-    container_name: spark-worker-1
-    links:
-      - spark-master
-      - opentsdb
-      - datamodel-api
-      - pgsql.dev
-    depends_on:
-      - spark-master
-    user: root
-    ports:
-      - "10001:8081"
-    environment:
-      OPENTSDB_READ_HOST: opentsdb
-      OPENTSDB_READ_PORT: 4242
-      OPENTSDB_WRITE_HOST: opentsdb
-      OPENTSDB_WRITE_PORT: 4242
-      POSTGRES_HOST: pgsql.dev
-      POSTGRES_PORT: 5432
-      SPARK_MASTER_HOST: spark-master
-      SPARK_MASTER_PORT: 7077
-      SPARK_MODE: slave
-      TDM_HOST: datamodel-api
-      TDM_PORT: 8080
