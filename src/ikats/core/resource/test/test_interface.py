@@ -92,7 +92,7 @@ class TestResourceLocator(TestCase):
         #
         #  ikats.core.library.tests.test_singleton
 
-        tdm = TdmForTest(port=80, host='dev')
+        tdm = TdmForTest()
         ResourceLocator(tdm=tdm, ntdm=None)
 
         my_ts = ResourceLocator().tdm.get_ts(['tsuid1'])
