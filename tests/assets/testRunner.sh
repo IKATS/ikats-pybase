@@ -11,6 +11,6 @@ nosetests --with-xunit
 
 # Run the django specific tests
 # cd ikats/processing > /dev/null
-# python manage.py test
-# python manage.py jenkins --enable-coverage
-# python manage.py collectstatic --noinput
+# python3 manage.py test --settings=ikats_processing.settings.docker
+# python3 manage.py jenkins --enable-coverage
+# python3 manage.py collectstatic --noinput
