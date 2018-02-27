@@ -22,9 +22,4 @@ gunicorn \
 #tail -f /logs/ikats_django.log &
 tail -f /logs/ikats_processing.log &
 
-# Print logs to stdout
-# (temporary trick)
-#tail -f /logs/ikats_django.log &
-tail -f /logs/ikats_processing.log &
-
 sleep infinity
