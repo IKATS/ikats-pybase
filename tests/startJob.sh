@@ -13,17 +13,16 @@ docker-compose up --build -d
 sleep 15
 
 # Prepare test environment
-docker cp assets/test_requirements.txt ${containerName}:/ikats/ \
-&& docker cp assets/testRunner.sh ${containerName}:/ikats/
-
-sleep 15
+docker cp assets/test_requirements.txt ${containerName}:/ikats/
+docker cp assets/testPrepare.sh ${containerName}:/ikats/
+docker cp assets/testRunner.sh ${containerName}:/ikats/
 
 # Execute the test campaign inside the docker container
-docker exec -it --user root ${containerName} bash /ikats/testRunner.sh
+docker exec -it --user root ${containerName} bash /ikats/testPrepare.sh
+docker exec -it --user ikats ${containerName} bash /ikats/testRunner.sh
 
 # Get the results from docker container to host
 docker cp ${containerName}:/ikats/nosetests.xml ./nosetests.xml
-sleep 10
 
 # Stop ikats
 docker-compose down

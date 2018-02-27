@@ -1,13 +1,5 @@
 #!/bin/bash
 
-# Script to call inside container to run test campaign and collect results
-
-cd /ikats
-chown ikats:ikats /ikats/*
-
-# Install tests modules dependencies
-pip3 install -r test_requirements.txt
-
 # Fill the environment variables
 source ikats.env
 
