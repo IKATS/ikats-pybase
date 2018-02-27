@@ -41,7 +41,7 @@ services:
       - opentsdb
       - datamodel-api
 
-  spark-worker-1:
+  spark-worker:
     network_mode: bridge
     build:
       context: ../

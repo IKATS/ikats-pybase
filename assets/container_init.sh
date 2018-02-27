@@ -40,7 +40,6 @@ do
 done
 
 # Overriding ikats config
-echo "Configuring the node"
 config_file=${IKATS_PATH}/ikats/core/config/ikats.conf
 sed -i -e "s/opentsdb\.read\.ip.*$/opentsdb.read.ip = ${OPENTSDB_READ_HOST}/" ${config_file}
 sed -i -e "s/opentsdb\.read\.port.*$/opentsdb.read.port = ${OPENTSDB_READ_PORT}/" ${config_file}
