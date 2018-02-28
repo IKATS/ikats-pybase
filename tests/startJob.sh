@@ -10,7 +10,15 @@ trap "docker-compose down 2>/dev/null; exit 1" INT KILL QUIT
 echo "Getting fresh docker bindings"
 # Get new data
 export pathToDockerBindings=$(pwd)
-pathToDockerBindingsRepo=/IKATSDATA/docker_bindings/
+# Data are stored in /opt on remote jenkins slave host because of forbidden access to the NAS
+pathToDockerBindingsRepo=/opt/
+
+if [[ ! -d ${pathToDockerBindingsRepo} ]]
+then
+  echo "NAS not reachable. Can't get docker_bindings"
+  exit 2;
+fi
+
 dockerBindingsName="docker_bindings_EDF_portfolio"
 cp ${pathToDockerBindingsRepo}/${dockerBindingsName}.tar.gz ${pathToDockerBindings} &
 # Clean previous one if exists
