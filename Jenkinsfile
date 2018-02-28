@@ -18,6 +18,10 @@ node('docker') {
          * docker build on the command line */
         ikats_pybase = docker.build("ikats-pybase")
     }
+    
+    stage('Test') {
+        sh 'cd tests; ./startJob.sh'
+    }
 
     stage('Push image') {
         branchName = "${env.BRANCH_NAME}".substring("${env.BRANCH_NAME}".lastIndexOf("/") + 1)
