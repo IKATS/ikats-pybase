@@ -92,6 +92,9 @@ DATABASES = {
         'PASSWORD': 'ikats',
         'HOST': os.environ['POSTGRES_HOST'],
         'PORT': int(os.environ['POSTGRES_PORT']),
+        'TEST': {
+            'NAME':'ikats',
+        },
     }
 }
 
