@@ -6,13 +6,6 @@ source ikats.env
 # Skip the long tests by default (can be overriden)
 export SKIP_LONG_TEST=${SKIP_LONG_TEST:-1}
 
-# The Working directory is directly the location of the sources
-nosetests --with-xunit
-
-# Run the django specific tests
 cd ikats/processing > /dev/null
-# Set the default settings for django
-#export DJANGO_SETTINGS_MODULE=ikats_processing.settings.docker
-python3 manage.py test --keepdb --settings=ikats_processing.settings.docker
-# python3 manage.py jenkins --enable-coverage
-# python3 manage.py collectstatic --noinput
+PYLINT_RCFILE=${IKATS_PATH}/pylint.rc
+python3 manage.py jenkins --enable-coverage --keepdb --settings=ikats_processing.settings.docker ikats

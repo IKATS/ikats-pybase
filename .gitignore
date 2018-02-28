@@ -8,5 +8,5 @@ __pycache__
 *.py[cod]
 *$py.class
 *.rst
-nosetests.xml
+junit.xml
 docker_bindings

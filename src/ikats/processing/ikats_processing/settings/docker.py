@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'apps.algo.catalogue',
     'apps.algo.custom',
     'apps.algo.execute',
+    'django_jenkins',
 ]
 
 # Application definition
