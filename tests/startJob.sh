@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Stop any running container if error occurs
-trap "docker-compose down 2>/dev/null; exit 1" INT KILL QUIT
+trap "docker-compose down >/dev/null 2>&1; exit 1" INT KILL QUIT
 
 # This script will prepare an empty environment, will start ikats and then run the test campaign
 # After the campaign is completed, the script will get the result files to feed Jenkins metrics
@@ -50,7 +50,7 @@ docker cp assets/testRunner.sh ${containerName}:${IKATS_PATH}/
 
 # Execute the test campaign inside the docker container
 docker exec --user root ${containerName} bash ${IKATS_PATH}/testPrepare.sh
-sleep 30
+sleep 10
 docker exec --user ikats ${containerName} bash ${IKATS_PATH}/testRunner.sh
 EXIT_STATUS=$?
 
