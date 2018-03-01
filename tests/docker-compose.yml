@@ -111,15 +111,17 @@ services:
     network_mode: bridge
     hostname: hbase-docker
     image: ${IMAGE_HBASE}
+    restart: always
     ports:
       # Master port
       - "16010:16010"
+      - "16030:16030"
       # Zk port
       - "2181:2181"
       - "38951:38951"
       - "9090:9090"
       - "9095:9095"
-      - "8080:8080"
+      - "28080:8080"
       - "8085:8085"
     volumes:
       - ${DOCKER_BINDINGS_HBASE}:/data/hbase
@@ -131,7 +133,10 @@ services:
       - hbase-docker
     links:
       - hbase-docker
-    restart: on-failure
+    restart: always
+    ports:
+      # Master port
+      - "4242:4242"
     environment:
       TSD_CONF_tsd__storage__hbase__zk_quorum: hbase-docker
       TSD_CONF_tsd__network__port: 4242
