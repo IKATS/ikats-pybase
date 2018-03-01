@@ -29,10 +29,10 @@ wait
 # Unzip new one
 pushd ${pathToDockerBindings} >/dev/null
 tar xzf ${dockerBindingsName}.tar.gz && rm ${dockerBindingsName}.tar.gz
+popd >/dev/null
 # Change location of docker bindings for docker-compose
 sed -i "s@DOCKER_BINDINGS_POSTGRES=.*@DOCKER_BINDINGS_POSTGRES=${pathToDockerBindings}/docker_bindings/postgresql@" .env
 sed -i "s@DOCKER_BINDINGS_HBASE=.*@DOCKER_BINDINGS_HBASE=${pathToDockerBindings}/docker_bindings/hbase/hbase@" .env
-popd >/dev/null
 
 # Start ikats
 docker-compose up --build -d

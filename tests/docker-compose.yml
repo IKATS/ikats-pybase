@@ -10,7 +10,7 @@ services:
       context: ../
     container_name: tests_pybase
     ports:
-      - 8000:8000
+      - "8000:8000"
     environment:
       GUNICORN_PORT: 8000
       OPENTSDB_READ_HOST: opentsdb
@@ -21,11 +21,11 @@ services:
       POSTGRES_PORT: 5432
       SPARK_MASTER_HOST: spark-master
       SPARK_MASTER_PORT: 7077
-      TDM_HOST: datamodel-api
+      TDM_HOST: datamodel
       TDM_PORT: 8080
     links:
       - opentsdb
-      - datamodel-api
+      - datamodel
       - spark-master
       - postgresql
 
@@ -39,7 +39,7 @@ services:
       SPARK_MODE: master
     links:
       - opentsdb
-      - datamodel-api
+      - datamodel
 
   spark-worker:
     network_mode: bridge
@@ -49,7 +49,7 @@ services:
     links:
       - spark-master
       - opentsdb
-      - datamodel-api
+      - datamodel
       - postgresql
     depends_on:
       - spark-master
@@ -66,16 +66,16 @@ services:
       SPARK_MASTER_HOST: spark-master
       SPARK_MASTER_PORT: 7077
       SPARK_MODE: slave
-      TDM_HOST: datamodel-api
+      TDM_HOST: datamodel
       TDM_PORT: 8080
 
-  datamodel-api:
+  datamodel:
     network_mode: bridge
     image: ${IMAGE_DATAMODEL}
     ports:
       - "8087:8080"
     environment:
-      TOMCAT_HOST: datamodel-api
+      TOMCAT_HOST: datamodel
       TOMCAT_PORT: 8080
       DB_HOST: postgresql
       DB_PORT: 5432
@@ -107,9 +107,9 @@ services:
     volumes:
       - ${DOCKER_BINDINGS_POSTGRES}:/home/postgres/psql/9.5
 
-  hbase-docker:
+  hbase:
     network_mode: bridge
-    hostname: hbase-docker
+    hostname: hbase
     image: ${IMAGE_HBASE}
     restart: always
     ports:
@@ -130,15 +130,14 @@ services:
     network_mode: bridge
     image: ${IMAGE_OPENTSDB}
     depends_on:
-      - hbase-docker
+      - hbase
     links:
-      - hbase-docker
+      - hbase
     restart: always
     ports:
-      # Master port
       - "4242:4242"
     environment:
-      TSD_CONF_tsd__storage__hbase__zk_quorum: hbase-docker
+      TSD_CONF_tsd__storage__hbase__zk_quorum: hbase
       TSD_CONF_tsd__network__port: 4242
       TSD_CONF_tsd__http__staticroot: /usr/share/opentsdb/static/
       TSD_CONF_tsd__http__cachedir: /tmp/opentsdb
