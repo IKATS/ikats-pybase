@@ -46,18 +46,15 @@ docker cp assets/pylint.rc ${containerName}:${IKATS_PATH}/
 docker cp assets/testRunner.sh ${containerName}:${IKATS_PATH}/
 
 # Execute the test campaign inside the docker container
-docker exec -it --user root ${containerName} bash ${IKATS_PATH}/testPrepare.sh
+docker exec --user root ${containerName} bash ${IKATS_PATH}/testPrepare.sh
 sleep 30
-docker exec -it --user ikats ${containerName} bash ${IKATS_PATH}/testRunner.sh
+docker exec --user ikats ${containerName} bash ${IKATS_PATH}/testRunner.sh
 EXIT_STATUS=$?
-
-# Test purposes
-docker ps
 
 # Get the results from docker container to host
 docker cp ${containerName}:${IKATS_PATH}/ikats/processing/reports/junit.xml ./junit.xml
 
 # Stop ikats
-docker-compose down
+docker-compose down > /dev/null
 
 exit ${EXIT_STATUS}
