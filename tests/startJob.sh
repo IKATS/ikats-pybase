@@ -9,8 +9,7 @@ trap "docker-compose down >/dev/null 2>&1; exit 1" INT KILL QUIT
 # Prepare docker_bindings
 echo "Getting fresh docker bindings"
 # Get new data
-export pathToDockerBindings=$(mktemp -d)
-# Data are stored in /opt on remote jenkins slave host because of forbidden access to the NAS
+export pathToDockerBindings=$(mktemp -d /tmp/testing.XXXXXX)
 pathToDockerBindingsRepo=${1:-/IKATSDATA/docker_bindings/}
 
 if [[ ! -d ${pathToDockerBindingsRepo} ]]
@@ -40,6 +39,7 @@ docker-compose up --build -d
 # Container name to test (should never change)
 containerName=tests_pybase
 
+# Ikats path inside the container
 IKATS_PATH=/ikats
 
 # Prepare test environment
@@ -47,18 +47,19 @@ docker cp assets/test_requirements.txt ${containerName}:${IKATS_PATH}/
 docker cp assets/testPrepare.sh ${containerName}:${IKATS_PATH}/
 docker cp assets/pylint.rc ${containerName}:${IKATS_PATH}/
 docker cp assets/testRunner.sh ${containerName}:${IKATS_PATH}/
-
-# Execute the test campaign inside the docker container
 docker exec --user root ${containerName} bash ${IKATS_PATH}/testPrepare.sh
+
+# Wait a bit to let containers to initiate communication with others
 sleep 10
+# Execute the test campaign inside the docker container
 docker exec --user ikats ${containerName} bash ${IKATS_PATH}/testRunner.sh
 EXIT_STATUS=$?
 
 # Get the results from docker container to host
 docker cp ${containerName}:${IKATS_PATH}/ikats/processing/reports/junit.xml ./junit.xml
 
-# Stop ikats
+# Stopping docker
 docker-compose down > /dev/null
 
-# KO tests to be fixed later, continue the job
+# KO tests will have to be fixed later, continue the job by simulating a OK status
 # exit ${EXIT_STATUS}
