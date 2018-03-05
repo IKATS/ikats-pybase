@@ -1,3 +1,5 @@
+properties([parameters([booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Run the test campaign')])])
+
 node('docker') {
 
     stage('Clone repository') {
@@ -20,7 +22,9 @@ node('docker') {
     }
 
     stage('Test') {
+      if (params.RUN_TESTS == true) {
         sh 'cd tests; ./startJob.sh'
+      }
     }
     //
     // stage('QA') {
