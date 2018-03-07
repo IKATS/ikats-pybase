@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Stop any running container if error occurs
-trap "docker-compose down >/dev/null 2>&1; exit 1" INT KILL QUIT
+trap "echo 'Stopping...';docker-compose down >/dev/null 2>&1; exit 1" INT KILL QUIT PIPE
 
 # This script will prepare an empty environment, will start ikats and then run the test campaign
 # After the campaign is completed, the script will get the result files to feed Jenkins metrics
@@ -19,11 +19,7 @@ then
 fi
 
 dockerBindingsName="docker_bindings_EDF_portfolio"
-cp ${pathToDockerBindingsRepo}${dockerBindingsName}.tar.gz ${pathToDockerBindings} &
-# Clean previous one if exists
-rm -rf ${pathToDockerBindings}/docker_bindings 2 > /dev/null &
-# Previous actions were performed in parallel, wait until all previous actions are completed
-wait
+cp ${pathToDockerBindingsRepo}${dockerBindingsName}.tar.gz ${pathToDockerBindings}
 
 # Unzip new one
 pushd ${pathToDockerBindings} >/dev/null
