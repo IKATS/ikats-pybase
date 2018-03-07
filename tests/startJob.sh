@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Stop any running container if error occurs
-trap "echo 'Stopping...';docker-compose down >/dev/null 2>&1; exit 1" INT KILL QUIT PIPE
-
 # This script will prepare an empty environment, will start ikats and then run the test campaign
 # After the campaign is completed, the script will get the result files to feed Jenkins metrics
+
+# Stop any running container if error occurs
+trap "echo 'Stopping...';docker-compose down >/dev/null 2>&1; exit 1" INT KILL QUIT PIPE
 
 # Prepare docker_bindings
 echo "Getting fresh docker bindings"
@@ -57,5 +57,5 @@ docker cp ${containerName}:${IKATS_PATH}/ikats/processing/reports/junit.xml ./ju
 # Stopping docker
 docker-compose down > /dev/null
 
-# KO tests will have to be fixed later, continue the job by simulating a OK status
-# exit ${EXIT_STATUS}
+# Return 0 if all tests are OK, any other number indicates tests are KO
+exit ${EXIT_STATUS}
