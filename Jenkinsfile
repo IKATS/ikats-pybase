@@ -1,3 +1,5 @@
+properties([parameters([booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Run the test campaign')])])
+
 node('docker') {
 
     stage('Clone repository') {
@@ -18,6 +20,27 @@ node('docker') {
          * docker build on the command line */
         ikats_pybase = docker.build("ikats-pybase")
     }
+
+    stage('Test') {
+      if (params.RUN_TESTS == true) {
+        sh 'cd tests; ./startJob.sh'
+      }
+    }
+    //
+    // stage('QA') {
+    //   junit testDataPublishers: [[$class: 'AttachmentPublisher']], testResults: "tests/junit.xml"
+    //   sh '''
+    //     sed -i 's/filename="\\(.*\\)"/filename="code\\/procedures\\/\\1"/g' tests/junit.xml
+    //     sed -i 's/filename="\\(.*\\)"/filename="code\\/procedures\\/\\1"/g' tests/junit.xml
+    //   '''
+    //   // requires SonarQube Scanner 2.8+
+    //   def scannerHome = tool 'SonarQube Scanner 3';
+    //   env.JAVA_HOME="/home/jenkins/jdk"
+    //   sh 'echo j=$JAVA_HOME'
+    //   withSonarQubeEnv('SonarQube@moduleci-vm15') {
+    //     sh "${scannerHome}/bin/sonar-scanner -X"
+    //   }
+    // }
 
     stage('Push image') {
         branchName = "${env.BRANCH_NAME}".substring("${env.BRANCH_NAME}".lastIndexOf("/") + 1)

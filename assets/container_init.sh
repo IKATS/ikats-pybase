@@ -40,7 +40,6 @@ do
 done
 
 # Overriding ikats config
-echo "Configuring the node"
 config_file=${IKATS_PATH}/ikats/core/config/ikats.conf
 sed -i -e "s/opentsdb\.read\.ip.*$/opentsdb.read.ip = ${OPENTSDB_READ_HOST}/" ${config_file}
 sed -i -e "s/opentsdb\.read\.port.*$/opentsdb.read.port = ${OPENTSDB_READ_PORT}/" ${config_file}
@@ -57,8 +56,8 @@ then
    PATH=$PATH:/usr/local/bin/
 fi
 
-# Updating PYTHONPATH with django, pyspark, ikats
-export PYTHONPATH=${PYTHONPATH}:${SPARK_HOME}/python:${IKATS_PATH}:${IKATS_PATH}/algo/contrib:${IKATS_PATH}/processing
+# Updating PYTHONPATH
+source ikats.env
 
 # Choose between Spark and Gunicorn
 if [[ -z ${SPARK_MODE} ]]
