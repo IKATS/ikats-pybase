@@ -23,18 +23,18 @@ SECRET_KEY = '%^hzdv7krajw2no2jjwk=ek3jos@pra89e4+^yhev!+cxqt#f$'
 
 ALLOWED_HOSTS = []
 
-INSTALLED_APPS = (
+INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'apps.algo.catalogue',
     'apps.algo.custom',
     'apps.algo.execute',
-    'corsheaders',
-)
+]
 
 # Application definition
 
@@ -53,7 +53,8 @@ MIDDLEWARE_CLASSES = (
 )
 
 CORS_ORIGIN_WHITELIST = (
-    'localhost'
+    'localhost',
+    '127.0.0.1'
 )
 
 ROOT_URLCONF = 'ikats_processing.urls'
@@ -90,7 +91,10 @@ DATABASES = {
         'USER': 'ikats',
         'PASSWORD': 'ikats',
         'HOST': os.environ['POSTGRES_HOST'],
-        'PORT': os.environ['POSTGRES_PORT'],
+        'PORT': int(os.environ['POSTGRES_PORT']),
+        'TEST': {
+            'NAME':'ikats',
+        },
     }
 }
 
