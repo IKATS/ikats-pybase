@@ -53,7 +53,6 @@ services:
       - postgresql
     depends_on:
       - spark-master
-    user: root
     ports:
       - "10001:8081"
     environment:
