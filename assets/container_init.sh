@@ -41,15 +41,15 @@ done
 
 # Overriding ikats config
 config_file=${IKATS_PATH}/ikats/core/config/ikats.conf
-sed -i -e "s/opentsdb\.read\.ip.*$/opentsdb.read.ip = ${OPENTSDB_READ_HOST}/" ${config_file}
-sed -i -e "s/opentsdb\.read\.port.*$/opentsdb.read.port = ${OPENTSDB_READ_PORT}/" ${config_file}
-sed -i -e "s/opentsdb\.write\.ip.*$/opentsdb.write.ip = ${OPENTSDB_WRITE_HOST}/" ${config_file}
-sed -i -e "s/opentsdb\.write\.port.*$/opentsdb.write.port = ${OPENTSDB_WRITE_PORT}/" ${config_file}
-sed -i -e "s/tdm\.ip.*$/tdm.ip = ${TDM_HOST}/" ${config_file}
-sed -i -e "s/tdm\.port.*$/tdm.port = ${TDM_PORT}/" ${config_file}
-sed -i -e "s/spark\.url.*$/spark.url = spark:\/\/${SPARK_MASTER_HOST}:${SPARK_MASTER_PORT}/" ${config_file}
+sed -i -e "s@opentsdb\.read\.ip.*@opentsdb.read.ip = ${OPENTSDB_READ_HOST}@" ${config_file}
+sed -i -e "s@opentsdb\.read\.port.*@opentsdb.read.port = ${OPENTSDB_READ_PORT}@" ${config_file}
+sed -i -e "s@opentsdb\.write\.ip.*@opentsdb.write.ip = ${OPENTSDB_WRITE_HOST}@" ${config_file}
+sed -i -e "s@opentsdb\.write\.port.*@opentsdb.write.port = ${OPENTSDB_WRITE_PORT}@" ${config_file}
+sed -i -e "s@tdm\.ip.*@tdm.ip = ${TDM_HOST}@" ${config_file}
+sed -i -e "s@tdm\.port.*@tdm.port = ${TDM_PORT}@" ${config_file}
+sed -i -e "s@spark\.url.*@spark.url = spark:\/\/${SPARK_MASTER_HOST}:${SPARK_MASTER_PORT}@" ${config_file}
 node_name=$(hostname)
-sed -i -e "s/node\.name.*$/node.name = ${node_name}/" ${config_file}
+sed -i -e "s@node\.name.*@node.name = ${node_name}@" ${config_file}
 
 if test -d /usr/local/bin/
 then
