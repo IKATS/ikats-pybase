@@ -2,9 +2,12 @@ FROM hub.ops.ikats.org/ikats-spark
 
 ADD assets/requirements.txt /tmp
 WORKDIR /tmp
-RUN pip3 install --upgrade pip \
+RUN apt-get update\
+  && apt-get install -y python-pip\
   && pip3 install -r requirements.txt \
-  && rm requirements.txt
+  && rm requirements.txt\
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
 
 RUN \
   groupadd \
@@ -31,9 +34,11 @@ ADD assets/container_init.sh ${IKATS_PATH}
 ADD assets/start_gunicorn.sh ${IKATS_PATH}
 ADD assets/ikats.env ${IKATS_PATH}
 
-RUN chown -R ikats:ikats ${IKATS_PATH} /opt/spark
+RUN chown -R ikats:ikats ${IKATS_PATH} /opt/spark /start_spark.sh
+
 
 WORKDIR ${IKATS_PATH}
 USER ikats
+
 EXPOSE 8000
 ENTRYPOINT ["bash", "container_init.sh"]
