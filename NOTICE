@@ -68,6 +68,8 @@ The following components are provided under Apache Software License:
     requests (2.8.1)
     https://pypi.org/project/requests/
 
+    pyspark (1.6.2)
+    http://spark.apache.org/docs/2.1.0/api/python/_modules/pyspark.html
 
 =================================================
 GNU Lesser General Public License
@@ -119,3 +121,14 @@ The following components are provided under Apache Software & BSD Licenses:
 
   python-dateutil (2.6.0)
   https://pypi.org/project/python-dateutil/
+
+
+=================================================
+PSF License
+https://docs.python.org/3/license.html
+
+=================================================
+
+The following components are provided under PSF Licenses :
+
+    Python (3.6.0)
