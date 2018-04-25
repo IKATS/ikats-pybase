@@ -2,12 +2,8 @@ FROM hub.ops.ikats.org/ikats-spark
 
 ADD assets/requirements.txt /tmp
 WORKDIR /tmp
-RUN apt-get update\
-  && apt-get install -y python-pip\
-  && pip3 install -r requirements.txt \
-  && rm requirements.txt\
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+RUN pip3 install -r requirements.txt \
+  && rm requirements.txt
 
 RUN \
   groupadd \
