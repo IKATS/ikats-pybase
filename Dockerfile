@@ -1,4 +1,4 @@
-FROM hub.ops.ikats.org/ikats-spark
+FROM ikats/ikats-spark
 
 ADD assets/requirements.txt /tmp
 WORKDIR /tmp
@@ -31,7 +31,6 @@ ADD assets/start_gunicorn.sh ${IKATS_PATH}
 ADD assets/ikats.env ${IKATS_PATH}
 
 RUN chown -R ikats:ikats ${IKATS_PATH} /opt/spark /start_spark.sh
-
 
 WORKDIR ${IKATS_PATH}
 USER ikats
