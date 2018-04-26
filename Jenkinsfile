@@ -21,6 +21,17 @@ node('docker') {
         ikats_pybase = docker.build("ikats-pybase")
     }
 
+    stage('Push image') {
+        branchName = "${env.BRANCH_NAME}".substring("${env.BRANCH_NAME}".lastIndexOf("/") + 1)
+        docker.withRegistry("${env.REGISTRY_ADDRESS}", 'DOCKER_REGISTRY') {
+          ikats_pybase.push(branchName + "_${GIT_COMMIT}")
+          ikats_pybase.push(branchName + "_latest")
+          if ("${env.BRANCH_NAME}" == "master") {
+            ikats_pybase.push("latest")
+          }
+        }
+    }
+
     stage('Test') {
       if (params.RUN_TESTS == true) {
         sh 'cd tests; ./startJob.sh'
@@ -42,14 +53,4 @@ node('docker') {
     //   }
     // }
 
-    stage('Push image') {
-        branchName = "${env.BRANCH_NAME}".substring("${env.BRANCH_NAME}".lastIndexOf("/") + 1)
-        docker.withRegistry("${env.REGISTRY_ADDRESS}", 'DOCKER_REGISTRY') {
-          ikats_pybase.push(branchName + "_${GIT_COMMIT}")
-          ikats_pybase.push(branchName + "_latest")
-          if ("${env.BRANCH_NAME}" == "master") {
-            ikats_pybase.push("latest")
-          }
-        }
-    }
 }
