@@ -18,7 +18,7 @@ node('docker') {
     stage('Build image') {
         /* This builds the actual image; synonymous to
          * docker build on the command line */
-        ikats_pybase = docker.build("ikats-pybase")
+        ikats_pybase = docker.build("ikats-pybase", "--pull .")
     }
 
     stage('Push image') {
