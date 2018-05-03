@@ -1,4 +1,4 @@
-FROM ikats/ikats-spark
+FROM ikats/spark
 
 ADD assets/requirements.txt /tmp
 WORKDIR /tmp
