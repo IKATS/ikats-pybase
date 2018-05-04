@@ -1,4 +1,4 @@
-FROM ikats/spark
+FROM ikats/spark:172302_latest
 
 ADD assets/requirements.txt /tmp
 WORKDIR /tmp
