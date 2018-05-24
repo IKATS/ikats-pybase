@@ -17,7 +17,7 @@ node('docker') {
 
     stage('Build image') {
 
-      // Replacing docker registry to private one
+      // Replacing docker registry to private one. See [#172302]
       sh "sed -i 's/FROM ikats/FROM hub.ops.ikats.org/' Dockerfile"
 
       /* This builds the actual image; synonymous to
