@@ -1,9 +1,13 @@
 ![IKATS Logo](https://ikats.github.io/img/Logo-ikats-icon.png) IKATS pybase
 -------------------------
 
+![Docker Automated build](https://img.shields.io/docker/automated/ikats/pybase.svg)
+![Docker Build Status](https://img.shields.io/docker/build/ikats/pybase.svg)
+![MicroBadger Size](https://img.shields.io/microbadger/image-size/ikats/pybase.svg)
+
 **An overview of IKATS global architecture is available <a href="https://github.com/IKATS/IKATS">here</a>.**
 
-This component, developed in python, is the core of IKATS python part.  
+This component, developed in python, is the core of IKATS python part.
 It is directly used by algorithms implementations to access data to compute (read/write).
 It is composed of:
  * a RESTFull API to access to the data model (datasets, functional identifiers,
