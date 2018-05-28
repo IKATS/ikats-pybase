@@ -16,9 +16,13 @@ node('docker') {
     }
 
     stage('Build image') {
-        /* This builds the actual image; synonymous to
-         * docker build on the command line */
-        ikats_pybase = docker.build("ikats-pybase")
+
+      // Replacing docker registry to private one. See [#172302]
+      sh "sed -i 's/FROM ikats/FROM hub.ops.ikats.org/' Dockerfile"
+
+      /* This builds the actual image; synonymous to
+       * docker build on the command line */
+      ikats_pybase = docker.build("pybase", "--pull .")
     }
 
     stage('Push image') {
@@ -27,7 +31,7 @@ node('docker') {
           ikats_pybase.push(branchName + "_${GIT_COMMIT}")
           ikats_pybase.push(branchName + "_latest")
           if ("${env.BRANCH_NAME}" == "master") {
-            ikats_pybase.push("latest")
+            ikats_pybase.push("master")
           }
         }
     }
