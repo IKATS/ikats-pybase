@@ -1,4 +1,4 @@
-FROM ikats/spark:develop_latest
+FROM ikats/spark:0.7.39
 
 LABEL license="Apache License, Version 2.0"
 LABEL copyright="CS Systèmes d'Information"
