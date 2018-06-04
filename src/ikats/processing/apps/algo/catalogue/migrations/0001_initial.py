@@ -17,7 +17,6 @@ limitations under the License.
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from django.db import migrations, models
-from apps.algo.catalogue.migrations.data import init_data_db
 
 
 class Migration(migrations.Migration):
