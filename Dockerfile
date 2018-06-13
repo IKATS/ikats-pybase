@@ -37,6 +37,8 @@ ADD assets/ikats.env ${IKATS_PATH}
 
 RUN chown -R ikats:ikats ${IKATS_PATH} /opt/spark /start_spark.sh
 
+VOLUME ${IKATS_PATH}/algo
+
 WORKDIR ${IKATS_PATH}
 USER ikats
 
