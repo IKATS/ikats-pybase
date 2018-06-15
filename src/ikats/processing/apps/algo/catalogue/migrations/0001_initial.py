@@ -17,26 +17,6 @@ limitations under the License.
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from django.db import migrations, models
-from apps.algo.catalogue.migrations.data import init_data_db
-
-
-def create_algo_catalogue(apps, schema_editor):
-    """
-    The data migration activating init_db_V2.create_algo_catalogue():
-      - restricted to the databases configured with sqlite3: DEV or PÏC
-      - in other words: cluster INT or PREPROD are not concerned,
-      assuming that Postgres database have been already migrated
-    About django data migrations:
-      - see https://docs.djangoproject.com/en/1.8/topics/migrations/
-    :param apps: django param required by Data migration Operation interface
-    :type apps: AppConfig
-    :param schema_editor: django param required by Data migration Operation interface
-    :type schema_editor: SchemaEditor
-    """
-    from django.conf import settings as djsettings
-    # migration is restricted to the DEV environment ... in order to initialize the catalogue
-    if djsettings.DATABASES['default']['ENGINE'] == "django.db.backends.sqlite3":
-        init_data_db.create_algo_catalogue()
 
 
 class Migration(migrations.Migration):
@@ -125,5 +105,4 @@ class Migration(migrations.Migration):
             name='family',
             field=models.ForeignKey(to='catalogue.FunctionalFamilyDao'),
         ),
-        migrations.RunPython(create_algo_catalogue),
     ]
