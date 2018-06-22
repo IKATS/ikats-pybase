@@ -1,4 +1,9 @@
 version: '2'
+
+volumes:
+  pybase_docker_bindings_postgresql:
+  pybase_docker_bindings_hbase:
+
 services:
 
   pybase:
@@ -104,7 +109,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ${DOCKER_BINDINGS_POSTGRES}:/home/postgres/psql/9.5
+      - pybase_docker_bindings_postgresql:/home/postgres/psql/9.5
 
   hbase:
     network_mode: bridge
@@ -123,7 +128,7 @@ services:
       - "28080:8080"
       - "8085:8085"
     volumes:
-      - ${DOCKER_BINDINGS_HBASE}:/data/hbase
+      - pybase_docker_bindings_hbase:/data/hbase
 
   opentsdb:
     network_mode: bridge
