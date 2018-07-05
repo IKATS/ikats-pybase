@@ -7,9 +7,9 @@
 trap "echo 'Stopping...';docker-compose down >/dev/null 2>&1; exit 1" INT KILL QUIT PIPE
 
 # Prepare docker_bindings
+dockerBindingsName="docker_bindings_EDF_portfolio"
 echo "Getting fresh docker bindings"
 # Get new data
-export pathToDockerBindings=$(mktemp -d /tmp/testing.XXXXXX)
 pathToDockerBindingsRepo=${1:-/IKATSDATA/docker_bindings/}
 
 if [[ ! -d ${pathToDockerBindingsRepo} ]]
@@ -17,17 +17,18 @@ then
   echo "Can't get docker_bindings. Unreachable folder"
   exit 2;
 fi
+cp ${pathToDockerBindingsRepo}${dockerBindingsName}.tar.gz ./
 
-dockerBindingsName="docker_bindings_EDF_portfolio"
-cp ${pathToDockerBindingsRepo}${dockerBindingsName}.tar.gz ${pathToDockerBindings}
-
-# Unzip new one
-pushd ${pathToDockerBindings} >/dev/null
+# Preparing volumes
+docker volume rm pybase_docker_bindings_postgresql pybase_docker_bindings_hbase > /dev/null 2>&1
+docker volume create pybase_docker_bindings_postgresql > /dev/null 2>&1 &
+docker volume create pybase_docker_bindings_hbase > /dev/null 2>&1 &
+wait
 tar xzf ${dockerBindingsName}.tar.gz && rm ${dockerBindingsName}.tar.gz
-popd >/dev/null
-# Change location of docker bindings for docker-compose
-sed -i "s@DOCKER_BINDINGS_POSTGRES=.*@DOCKER_BINDINGS_POSTGRES=${pathToDockerBindings}/docker_bindings/postgresql@" .env
-sed -i "s@DOCKER_BINDINGS_HBASE=.*@DOCKER_BINDINGS_HBASE=${pathToDockerBindings}/docker_bindings/hbase/hbase@" .env
+docker run --rm -v $(pwd)/docker_bindings/postgresql:/src -v pybase_docker_bindings_postgresql:/data busybox cp -r /src/* /data &
+docker run --rm -v $(pwd)/docker_bindings/hbase:/src -v pybase_docker_bindings_hbase:/data busybox cp -r /src/* /data &
+wait
+rm -rf docker_bindings/
 
 # Start ikats
 docker-compose pull
@@ -40,10 +41,11 @@ containerName=tests_pybase
 IKATS_PATH=/ikats
 
 # Prepare test environment
-docker cp assets/test_requirements.txt ${containerName}:${IKATS_PATH}/
-docker cp assets/testPrepare.sh ${containerName}:${IKATS_PATH}/
-docker cp assets/pylint.rc ${containerName}:${IKATS_PATH}/
-docker cp assets/testRunner.sh ${containerName}:${IKATS_PATH}/
+docker cp assets/test_requirements.txt ${containerName}:${IKATS_PATH}/ &
+docker cp assets/testPrepare.sh ${containerName}:${IKATS_PATH}/ &
+docker cp assets/pylint.rc ${containerName}:${IKATS_PATH}/ &
+docker cp assets/testRunner.sh ${containerName}:${IKATS_PATH}/ &
+wait
 docker exec --user root ${containerName} bash ${IKATS_PATH}/testPrepare.sh
 
 # Wait a bit to let containers to initiate communication with others
