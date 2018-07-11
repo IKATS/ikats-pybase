@@ -35,12 +35,12 @@ COPY assets/container_init.sh ${IKATS_PATH}
 COPY assets/start_gunicorn.sh ${IKATS_PATH}
 COPY assets/ikats.env ${IKATS_PATH}
 
-RUN \
-  mkdir -p ${TSDATA} && \
-  chown -R ikats:ikats ${IKATS_PATH} ${TSDATA} /opt/spark /start_spark.sh
+RUN chown -R ikats:ikats ${IKATS_PATH} /opt/spark /start_spark.sh
 
 WORKDIR ${IKATS_PATH}
 USER ikats
+RUN mkdir -p ${TSDATA}
 
+VOLUME ${IKATS_PATH}
 EXPOSE 8000
 ENTRYPOINT ["bash", "container_init.sh"]
