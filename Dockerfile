@@ -5,7 +5,7 @@ LABEL copyright="CS Systèmes d'Information"
 LABEL maintainer="contact@ikats.org"
 LABEL version="0.8.1"
 
-ADD assets/requirements.txt /tmp
+COPY assets/requirements.txt /tmp
 WORKDIR /tmp
 RUN pip3 install -r requirements.txt \
   && rm requirements.txt
@@ -21,26 +21,26 @@ RUN \
     ikats
 
 ENV IKATS_PATH /ikats
+ENV TSDATA /ikats/TSdata
 ENV PYSPARK_PYTHON python3
 
 RUN \
-  mkdir ${IKATS_PATH} && \
-  mkdir /logs && \
+  mkdir -p ${IKATS_PATH} /logs && \
   chown -R ikats:ikats /logs
 
-ADD src/ ${IKATS_PATH}
+COPY src/ ${IKATS_PATH}
 
-ADD assets/gunicorn.py.ini ${IKATS_PATH}
-ADD assets/container_init.sh ${IKATS_PATH}
-ADD assets/start_gunicorn.sh ${IKATS_PATH}
-ADD assets/ikats.env ${IKATS_PATH}
+COPY assets/gunicorn.py.ini ${IKATS_PATH}
+COPY assets/container_init.sh ${IKATS_PATH}
+COPY assets/start_gunicorn.sh ${IKATS_PATH}
+COPY assets/ikats.env ${IKATS_PATH}
 
 RUN chown -R ikats:ikats ${IKATS_PATH} /opt/spark /start_spark.sh
 
-VOLUME ${IKATS_PATH}/algo
-
 WORKDIR ${IKATS_PATH}
 USER ikats
+RUN mkdir -p ${TSDATA}
 
+VOLUME ${IKATS_PATH}
 EXPOSE 8000
 ENTRYPOINT ["bash", "container_init.sh"]
