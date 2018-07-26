@@ -5,7 +5,7 @@ eventlet==0.20.1
 fastdtw==0.3.0
 flake8==3.0.4
 greenlet==0.4.12
-gunicorn==19.3.0
+gunicorn==19.9.0
 httpretty==0.8.14
 mccabe==0.5.2
 natsort==5.0.2
