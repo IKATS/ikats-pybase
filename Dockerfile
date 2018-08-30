@@ -1,35 +1,30 @@
-FROM ikats/spark:0.7.39
+FROM ikats/spark:0.7.40
 
 LABEL license="Apache License, Version 2.0"
 LABEL copyright="CS Systèmes d'Information"
 LABEL maintainer="contact@ikats.org"
-LABEL version="0.8.2"
+LABEL version="0.8.3"
 
 COPY assets/requirements.txt /tmp
 WORKDIR /tmp
-RUN pip3 install -r requirements.txt \
-  && rm requirements.txt
 
-RUN \
-  groupadd \
+ENV IKATS_PATH /ikats
+ENV TSDATA /ikats/TSdata
+
+RUN pip3 install -r requirements.txt \
+  && rm requirements.txt \
+  && groupadd \
     -r ikats && \
   useradd \
     -r \
     -g ikats \
     -s /sbin/nologin \
     -c "Docker image user" \
-    ikats
-
-ENV IKATS_PATH /ikats
-ENV TSDATA /ikats/TSdata
-ENV PYSPARK_PYTHON python3
-
-RUN \
-  mkdir -p ${IKATS_PATH} /logs && \
+    ikats \
+  && mkdir -p ${IKATS_PATH} /logs && \
   chown -R ikats:ikats /logs
 
 COPY src/ ${IKATS_PATH}
-
 COPY assets/gunicorn.py.ini ${IKATS_PATH}
 COPY assets/container_init.sh ${IKATS_PATH}
 COPY assets/start_gunicorn.sh ${IKATS_PATH}
