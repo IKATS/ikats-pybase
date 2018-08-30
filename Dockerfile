@@ -1,9 +1,9 @@
-FROM hub.ops.ikats.org/spark:631_latest
+FROM ikats/spark:0.7.40
 
 LABEL license="Apache License, Version 2.0"
 LABEL copyright="CS Systèmes d'Information"
 LABEL maintainer="contact@ikats.org"
-LABEL version="0.8.2"
+LABEL version="0.8.3"
 
 COPY assets/requirements.txt /tmp
 WORKDIR /tmp
