@@ -21,6 +21,7 @@ from ikats.core.resource.client import TemporalDataMgr
 from ikats.core.resource.client.non_temporal_data_mgr import NonTemporalDataMgr
 from ikats.core.resource.interface import ResourceLocator
 from pyspark import SparkContext
+from pyspark.sql import SparkSession
 from pyspark.accumulators import AccumulatorParam
 from pyspark.conf import SparkConf
 
@@ -78,6 +79,108 @@ class Connector(object):
            | }
         """
         return IkatsApi.ts.create(func_id, data, generate_metadata, *args, **kwargs)
+
+
+class SSessionManager(object):
+    """
+    Spark Session manager
+    Used to manage spark session creation and closure. Note that a Spark Session is composed
+    by some info from a Spark Context.
+    Introduced for usage of spark DataFrame.
+    """
+
+    log = logging.getLogger("SSessionManager")
+
+    APPNAME_UNIT_TEST_IKATS = "UNIT_TEST_IKATS"
+
+    # Number of current algorithms needing the spark context
+    ikats_users = 0
+
+    # Spark session
+    spark_session = None
+
+    # Broadcast variables: shared content
+    sc_tdm = None
+    sc_ntdm = None
+
+    @staticmethod
+    def create(spark_context):
+        """
+        Create a new spark session from an existing spark context.
+        :param spark_context: A SparkContext (ex: ScManager.spark_context)
+        :type spark_context: SparkContext
+
+        :return: The spark Session
+        :rtype: SparkSession
+        """
+        SSessionManager.spark_context = spark_context
+
+        if not SSessionManager.spark_session:
+            # Init a Spark Session for using spark Dataframes:
+            # - use conf from a `SparkContext`
+            SSessionManager.spark_session = SparkSession.builder\
+                .config(conf=SSessionManager.spark_context.getConf())\
+                .getOrCreate()
+
+        return SSessionManager.spark_session
+
+    @staticmethod
+    def get(spark_context):
+        """
+        Get a spark session if exists or create a new one.
+        :param spark_context: A SparkContext (ex: ScManager.spark_context)
+        :type spark_context: SparkContext
+
+        :return: The spark session
+        :rtype: SparkSession
+        """
+        SSessionManager.ikats_users += 1
+
+        # Get or Create is yet implemented in `create` method.
+        return SSessionManager.create(spark_context)
+
+    @staticmethod
+    def stop():
+        """
+        Request to stop session.
+        The Spark session will continue to run if other algo needs it
+        :return: True if the spark session was actually stopped
+        :rtype: bool
+        """
+        actually_stopped = False
+        if SSessionManager.ikats_users > 0:
+            SSessionManager.ikats_users -= 1
+            SSessionManager.log.info("SSessionManager: stopping SparkSession: users count decreased to %s", SSessionManager.ikats_users)
+        else:
+            SSessionManager.log.warning("SSessionManager: stopping SparkSession: users count is already zero")
+
+        if SSessionManager.ikats_users == 0:
+            if SSessionManager.spark_session is None:
+                ScManager.log.error("SSessionManager: stopping SparkSession: unexpected error: undefined SparkSession")
+                raise SystemError('Trying to close an already closed Spark session')
+            SSessionManager.spark_session.stop()
+            SSessionManager.log.info("SSessionManager: stopping SparkSession without user left: SSessionManager.sc is "
+                                     "stopped and set to None.")
+
+            actually_stopped = True
+            SSessionManager.spark_session = None
+
+        return actually_stopped
+
+    @staticmethod
+    def stop_all():
+        """
+        Forces the stop of the defined SparkSession: SSessionManager.sc
+          - sets  SSessionManager.ikats_users to 0
+          - calls SSessionManager.sc.stop()
+          - sets SSessionManager.sc to None
+
+        Beware: do not use this method in operational mode: method to be used in TU only.
+        """
+        SSessionManager.ikats_users = 0
+        if SSessionManager.spark_session is not None:
+            SSessionManager.spark_session.stop()
+            SSessionManager.spark_session = None
 
 
 class ScManager(object):
