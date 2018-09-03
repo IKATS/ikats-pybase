@@ -357,6 +357,82 @@ class ScManager(object):
             ScManager.spark_context.stop()
             ScManager.spark_context = None
 
+    @staticmethod
+    def check_spark_usage(tsuid_list, nb_ts_criteria=100, nb_points_by_chunk=50000):
+        """
+        Function for checking Spark usage utility, function of the amount of available data.
+
+        :param tsuid_list: A list of TS identifier ("tsuid")
+        :type tsuid_list: list
+        :param nb_ts_criteria: The minimal number of TS to consider for considering Spark is
+        necessary
+        :type nb_ts_criteria: int
+        :param nb_points_by_chunk: number of points per chunk
+        :type nb_points_by_chunk: int
+
+        :return spark_usage: Bool indicating if (case True) spark should be used, according
+        to the available amount of data.
+        :rtype spark_usage: bool
+
+        Criterion: if one of these criterion is true -> use spark
+            * number of TS > `nb_ts_criteria`
+            * nb_point of one of the TS not available
+            * nb_point of one of the TS > 2 * `nb_points_by_chunk`
+        """
+        ScManager.log.info("Check criterion for Spark usage.")
+
+        # 0/ Check inputs
+        # ---------------------------------------------------
+        # Types
+        if type(tsuid_list) is not list:
+            raise TypeError("Input `tsuid_list` is {}, list expected.".format(type(tsuid_list)))
+
+        if type(nb_ts_criteria) is not int:
+            raise TypeError("Input `nb_ts_criteria` is {}, int expected.".format(type(nb_ts_criteria)))
+
+        if type(nb_points_by_chunk) is not int:
+            raise TypeError("Input `nb_points_by_chunk` is {}, int expected.".format(type(nb_points_by_chunk)))
+
+        # Value
+        if nb_ts_criteria <= 0:
+            raise ValueError('`nb_ts_criteria` is {}, expected to be strictly greater than 0')
+
+        if nb_points_by_chunk <= 0:
+            raise ValueError('`nb_points_by_chunk` is {}, expected to be strictly greater than 0')
+
+        # 1/ Start check
+        # ---------------------------------------------------
+        # Checking metadata availability before starting cutting
+        meta_list = IkatsApi.md.read(tsuid_list)
+
+        # Applying criterion on dataset total number of points
+        if len(tsuid_list) > nb_ts_criteria:
+            spark_usage = True
+        else:
+            # Collecting nb points to decide to use spark or not
+            spark_usage = False
+
+            for tsuid in tsuid_list:
+                # Checking metadata existence
+                if 'qual_nb_points' not in meta_list[tsuid]:
+                    # Metadata not found
+                    ScManager.log.error(
+                        "Metadata 'qual_nb_points' for time series %s not found in base, using Spark by default",
+                        tsuid)
+                    spark_usage = True
+                    break
+
+                # Retrieving tme series number of points from metadata
+                nb_points_ts = int(meta_list[tsuid]['qual_nb_points'])
+                # Applying criterion on each time series number of points
+                if nb_points_ts > 2 * nb_points_by_chunk:
+                    spark_usage = True
+                    break
+
+        ScManager.log.info("Spark usage set to {}.".format(spark_usage))
+
+        return spark_usage
+
 
 class ListAccumulatorParam(AccumulatorParam):
     """
