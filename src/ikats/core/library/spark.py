@@ -15,44 +15,53 @@ limitations under the License.
 
 """
 import logging
+import numpy as np
 
 from ikats.core.resource.api import IkatsApi
 from ikats.core.resource.client import TemporalDataMgr
 from ikats.core.resource.client.non_temporal_data_mgr import NonTemporalDataMgr
 from ikats.core.resource.interface import ResourceLocator
+
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
 from pyspark.accumulators import AccumulatorParam
 from pyspark.conf import SparkConf
 
-from ikats.core.resource.interface import ResourceLocator
-from ikats.core.resource.client.non_temporal_data_mgr import NonTemporalDataMgr
 from ikats.core.config.ConfigReader import ConfigReader
+
+from ikats.core.library.exception import IkatsException
+
 
 class Connector(object):
     """
     Standard actions to perform with map/reduce
     """
+    log = logging.getLogger("Connector")
 
     @staticmethod
-    def get_ts(tsuid, sd=None, ed=None):
+    def read_ts(tsuid, start_date=None, end_date=None):
         """
-        Encapsulation of get_ts to be used by maps chain
+        Return the points of a TS
 
-        :param tsuid: TSUID to get data from
-        :param sd: start date
-        :param ed: end date
-        :return: the ts_data corresponding to the TSUID
+        :param tsuid: TS to get values from
+        :type tsuid: str
+
+        :param start_date: start date (ms since EPOCH)
+        :type start_date: int or NoneType
+
+        :param end_date: end date (ms since EPOCH)
+        :type end_date: int or NoneType
+
+        :return: the values of the Timeseries
+        :rtype: np.array
         """
-
-        tdm = TemporalDataMgr()
-        return tdm.get_ts(tsuid_list=[tsuid], sd=sd, ed=ed)[0]
+        return IkatsApi.ts.read(tsuid_list=[tsuid], sd=start_date, ed=end_date)[0]
 
     @staticmethod
     def import_ts(func_id, data, generate_metadata=True, *args, **kwargs):
         """
-        Encapsulation of IkatsApi.ts.create
         Import TS data points in database or update an existing TS with new points
+        Encapsulation of IkatsApi.ts.create.
 
         :param data: array of points where first column is timestamp (EPOCH ms) and second is value (float compatible)
         :param func_id: Functional Identifier of the TS in Ikats
@@ -78,7 +87,39 @@ class Connector(object):
            |     'responseStatus': *status of response*
            | }
         """
-        return IkatsApi.ts.create(func_id, data, generate_metadata, *args, **kwargs)
+        results = IkatsApi.ts.create(fid=func_id,
+                                     data=data,
+                                     generate_metadata=generate_metadata,
+                                     *args, **kwargs)
+        if results['status']:
+            return results
+        else:
+            raise IkatsException("TS %s couldn't be created" % func_id)
+
+    @staticmethod
+    def save_metadata(tsuid, md_name, md_value, data_type, force_update):
+        """
+        Saves metadata to Ikats database and log potential errors
+
+        :param tsuid: TSUID to link metadata with
+        :param md_name: name of the metadata to save
+        :param md_value: value of the metadata
+        :param data_type: type of the metadata
+        :param force_update: overwrite metadata value if exists (if True)
+
+        :type tsuid: str
+        :type md_name: str
+        :type md_value: str or int or float
+        :type data_type: DTYPE
+        :type force_update: bool
+        """
+        if not IkatsApi.md.create(
+                tsuid=tsuid,
+                name=md_name,
+                value=md_value,
+                data_type=data_type,
+                force_update=force_update):
+            Connector.log.error("Metadata '%s' couldn't be saved for TS %s", md_name, tsuid)
 
 
 class SSessionManager(object):
@@ -96,12 +137,124 @@ class SSessionManager(object):
     # Number of current algorithms needing the spark context
     ikats_users = 0
 
-    # Spark session
+    # Spark session: for DataFrame creation
     spark_session = None
+    # Spark context: For init a spark Session, or for RDD creation
+    spark_context = None
 
-    # Broadcast variables: shared content
-    sc_tdm = None
-    sc_ntdm = None
+    # Number of point by chunk
+    CHUNK_SIZE = 50000
+
+    @staticmethod
+    def get_chunks(tsuid, md):
+        """
+        Cut a TS into chunks according to it's number of points.
+        Build np.array containing (([chunk_index, start_date, end_date],...).
+
+        Necessary for extracting a TS in Spark.
+
+        :param tsuid: TS to get values from
+        :type tsuid: str
+
+        :param md: The meta data corresponding to the current tsuid
+        :type md: dict
+
+        :return: RDD containing ([chunk_index, start_date, end_date],...)
+        :rtype: RDD
+        """
+        # Init result
+        data_to_compute = []
+
+        # 1/ Retrieve meta-data (start, end, nb_points)
+        # ----------------------------------------------------------------------
+        # Original time series information retrieved from metadata
+        sd = int(md['ikats_start_date'])
+        ed = int(md['ikats_end_date'])
+        ref_period = int(float(md['qual_ref_period']))
+        # qual_nb_points
+
+        # 2/ Chunk intervals computation
+        # ----------------------------------------------------------------------
+        # Prepare data to compute by defining intervals of final size CHUNK_SIZE
+
+        # Number of periods for one chunk
+        data_chunk_size = int(SSessionManager.CHUNK_SIZE * ref_period)
+        # ex: data_chunk_size = 10
+
+        # Computing intervals for chunk definition (limits are TIMESTAMPS)
+        interval_limits = np.hstack(np.arange(sd, ed, data_chunk_size, dtype=np.int64))
+        # ex: intervals = [ 10, 20, 30, 40 ], if sd=10, ed=40
+
+        # 3/ Define chunk of data to compute from intervals created
+        # ----------------------------------------------------------------------
+        # 3.1/ Defining chunks excluding last point of data within every chunk
+        data_to_compute.extend([(tsuid,
+                                 i,
+                                 interval_limits[i],
+                                 interval_limits[i + 1] - 1) for i in range(len(interval_limits) - 1)])
+        # ex: intervals = [ 10, 20, 30, 40 ] => 2 chunks [10, 19] and [20, 29]
+        # (last chunk added in step 2)
+
+        # 3.2/ Add the last interval, including last point of data
+        data_to_compute.append((tsuid,
+                                len(interval_limits) - 1,
+                                interval_limits[-1],
+                                ed + 1))
+        # ex: data_to_compute =  [[10, 19], [20, 29], [30, 40]]
+
+        return data_to_compute
+
+    @staticmethod
+    def get_ts_by_chunks(tsuid, md):
+        """
+        Read current TS (`tsuid`), chunked with spark.
+        For now, it's the optimal way to read TS with Spark DataFrame.
+
+        Action performed:
+            * get chunks intervals (id, start, end) (`get_chunks`)
+            * read current TS (`tsuid`) chunked with spark (RDD)
+            * transform resulting rdd into Spark DataFrame (DF)
+
+        :param tsuid: TS to get values from
+        :type tsuid: str
+
+        :param md: The meta data corresponding to the current tsuid
+        :type md: dict
+
+        :return: DataFrame containing all data from current TS
+        :rtype: pyspark.sql.dataframe.DataFrame
+        """
+        # 0/ Input check
+        # ----------------------------------------------------------------------
+        # Need a spark context to init an RDD
+        if SSessionManager.spark_context is None:
+            SSessionManager.log.error("SSessionManager: Trying to get TS by chunk with no spark_context."
+                                      " Please, launch `get` or `create` method with proper arg. ")
+            ValueError("No spark context.")
+
+        # 1/ Get the chunks, and read TS chunked
+        # ----------------------------------------------------------------------
+        # Get the chunks, and distribute them with Spark
+        rdd_ts_info = SSessionManager.spark_context.parallelize(SSessionManager.get_chunks(tsuid=tsuid,
+                                                                                           md=md))
+
+        # DESCRIPTION : Get the points within chunk range and suppress empty chunks
+        # INPUT  : ([chunk_index, start_date, end_date],...)
+        # OUTPUT : ([chunk_index, ts_data_points], ...)
+        rdd_chunk_data = rdd_ts_info \
+            .map(lambda x: (x[0],
+                            Connector.read_ts(tsuid=tsuid,
+                                              start_date=int(x[1]),
+                                              end_date=int(x[2])))) \
+            .filter(lambda x: len(x[1]) > 0)
+
+        # 2/ Put result into a Spark DataFrame
+        # ----------------------------------------------------------------------
+        # Init a DataFrame for one single ts_data
+        df = SSessionManager.spark_session.createDataFrame(
+            rdd_chunk_data, ["Timestamp", "Value"])
+
+        return df
 
     @staticmethod
     def create(spark_context):
@@ -358,15 +511,24 @@ class ScManager(object):
             ScManager.spark_context = None
 
     @staticmethod
-    def check_spark_usage(tsuid_list, nb_ts_criteria=100, nb_points_by_chunk=50000):
+    def check_spark_usage(tsuid_list, meta_list=None, nb_ts_criteria=100, nb_points_by_chunk=50000):
         """
         Function for checking Spark usage utility, function of the amount of available data.
 
         :param tsuid_list: A list of TS identifier ("tsuid")
         :type tsuid_list: list
+
+        :param meta_list: The list of meta data (not mandatory). If None, request IKATS for meta-data
+        type meta_list: dict (key is TS identifier, value is list of metadata with its associated data type)
+                    | {
+                    |     'TS1': {'param1':{'value':'value1', 'type': 'dtype'}, 'param2':{'value':'value2', 'type': 'dtype'}},
+                    |     'TS2': {'param1':{'value':'value1', 'type': 'dtype'}, 'param2':{'value':'value2', 'type': 'dtype'}}
+                    | }
+
         :param nb_ts_criteria: The minimal number of TS to consider for considering Spark is
         necessary
         :type nb_ts_criteria: int
+
         :param nb_points_by_chunk: number of points per chunk
         :type nb_points_by_chunk: int
 
@@ -386,10 +548,10 @@ class ScManager(object):
         # Types
         if type(tsuid_list) is not list:
             raise TypeError("Input `tsuid_list` is {}, list expected.".format(type(tsuid_list)))
-
+        if type(meta_list) is not dict:
+            raise TypeError("Input `meta_list` is {}, dict expected.".format(type(meta_list)))
         if type(nb_ts_criteria) is not int:
             raise TypeError("Input `nb_ts_criteria` is {}, int expected.".format(type(nb_ts_criteria)))
-
         if type(nb_points_by_chunk) is not int:
             raise TypeError("Input `nb_points_by_chunk` is {}, int expected.".format(type(nb_points_by_chunk)))
 
@@ -402,8 +564,9 @@ class ScManager(object):
 
         # 1/ Start check
         # ---------------------------------------------------
-        # Checking metadata availability before starting cutting
-        meta_list = IkatsApi.md.read(tsuid_list)
+        if meta_list is None:
+            # Checking metadata availability before starting cutting
+            meta_list = IkatsApi.md.read(tsuid_list)
 
         # Applying criterion on dataset total number of points
         if len(tsuid_list) > nb_ts_criteria:
