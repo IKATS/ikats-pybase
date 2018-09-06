@@ -149,7 +149,7 @@ class SSessionManager(object):
     def get_chunks(tsuid, md):
         """
         Cut a TS into chunks according to it's number of points.
-        Build np.array containing (([chunk_index, start_date, end_date],...).
+        Build np.array containing (([tsuid, chunk_index, start_date, end_date],...).
 
         Necessary for extracting a TS in Spark.
 
@@ -159,7 +159,7 @@ class SSessionManager(object):
         :param md: The meta data corresponding to the current tsuid
         :type md: dict
 
-        :return: RDD containing ([chunk_index, start_date, end_date],...)
+        :return: RDD containing ([tsuid, chunk_index, start_date, end_date],...)
         :rtype: RDD
         """
         # Init result
@@ -200,7 +200,7 @@ class SSessionManager(object):
                                 len(interval_limits) - 1,
                                 interval_limits[-1],
                                 ed + 1))
-        # ex: data_to_compute =  [[10, 19], [20, 29], [30, 40]]
+        # ex: data_to_compute => 4 chunks  [[10, 19], [20, 29], [30, 40]]
 
         return data_to_compute
 
@@ -235,24 +235,26 @@ class SSessionManager(object):
         # 1/ Get the chunks, and read TS chunked
         # ----------------------------------------------------------------------
         # Get the chunks, and distribute them with Spark
+        # Format: [(tsuid, chunk_id, start_date, end_date), ...]
         rdd_ts_info = SSessionManager.spark_context.parallelize(SSessionManager.get_chunks(tsuid=tsuid,
                                                                                            md=md))
 
         # DESCRIPTION : Get the points within chunk range and suppress empty chunks
-        # INPUT  : ([chunk_index, start_date, end_date],...)
-        # OUTPUT : ([chunk_index, ts_data_points], ...)
+        # INPUT  : [(tsuid, chunk_id, start_date, end_date), ...]
+        # OUTPUT : The dataset flat [[time1, value1], ...]
         rdd_chunk_data = rdd_ts_info \
-            .map(lambda x: (x[0],
-                            Connector.read_ts(tsuid=tsuid,
-                                              start_date=int(x[1]),
-                                              end_date=int(x[2])))) \
-            .filter(lambda x: len(x[1]) > 0)
+            .flatMap(lambda x: Connector.read_ts(tsuid=tsuid,
+                                                 start_date=int(x[2]),
+                                                 end_date=int(x[3])).tolist())
+        # Note that result have to be list (if np.array, difficult to convert into Spark DF)
 
         # 2/ Put result into a Spark DataFrame
         # ----------------------------------------------------------------------
         # Init a DataFrame for one single ts_data
-        df = SSessionManager.spark_session.createDataFrame(
-            rdd_chunk_data, ["Timestamp", "Value"])
+        # DESCRIPTION : Get the points within chunk range and suppress empty chunks
+        # INPUT  : [[time1, value1], ...]
+        # OUTPUT : DataFrame containing dataset (columns [Timestamp, Value])
+        df = rdd_chunk_data.toDF(["Timestamp", "Value"])
 
         return df
 
