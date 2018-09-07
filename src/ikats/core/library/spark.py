@@ -236,8 +236,8 @@ class SSessionManager(object):
         # ----------------------------------------------------------------------
         # Get the chunks, and distribute them with Spark
         # Format: [(tsuid, chunk_id, start_date, end_date), ...]
-        rdd_ts_info = SSessionManager.spark_context.parallelize(SSessionManager.get_chunks(tsuid=tsuid,
-                                                                                           md=md))
+        chunks = SSessionManager.get_chunks(tsuid=tsuid, md=md)
+        rdd_ts_info = SSessionManager.spark_context.parallelize(chunks, len(chunks))
 
         # DESCRIPTION : Get the points within chunk range and suppress empty chunks
         # INPUT  : [(tsuid, chunk_id, start_date, end_date), ...]
@@ -550,7 +550,7 @@ class ScManager(object):
         # Types
         if type(tsuid_list) is not list:
             raise TypeError("Input `tsuid_list` is {}, list expected.".format(type(tsuid_list)))
-        if type(meta_list) is not dict:
+        if type(meta_list) is not dict and meta_list is not None:
             raise TypeError("Input `meta_list` is {}, dict expected.".format(type(meta_list)))
         if type(nb_ts_criteria) is not int:
             raise TypeError("Input `nb_ts_criteria` is {}, int expected.".format(type(nb_ts_criteria)))

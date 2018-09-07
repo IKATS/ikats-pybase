@@ -156,7 +156,7 @@ class TestSpark(TestCase):
         md = IkatsApi.md.read(ts_list)[tsuid]
 
         # lower the param `CHUNK_SIZE` to create multiple chunks with our shirt dataset
-        # SSessionManager.CHUNK_SIZE = 10
+        # SSessionManager.CHUNK_SIZE = 5
 
         # Import data into dataframe (["Timestamp", "Value"])
         df = SSessionManager.get_ts_by_chunks(tsuid=tsuid, md=md)
