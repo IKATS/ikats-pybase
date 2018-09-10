@@ -29,98 +29,6 @@ from pyspark.conf import SparkConf
 
 from ikats.core.config.ConfigReader import ConfigReader
 
-from ikats.core.library.exception import IkatsException
-
-
-class Connector(object):
-    """
-    Standard actions to perform with map/reduce
-    """
-    log = logging.getLogger("Connector")
-
-    @staticmethod
-    def read_ts(tsuid, start_date=None, end_date=None):
-        """
-        Return the points of a TS
-
-        :param tsuid: TS to get values from
-        :type tsuid: str
-
-        :param start_date: start date (ms since EPOCH)
-        :type start_date: int or NoneType
-
-        :param end_date: end date (ms since EPOCH)
-        :type end_date: int or NoneType
-
-        :return: the values of the Timeseries
-        :rtype: np.array
-        """
-        return IkatsApi.ts.read(tsuid_list=[tsuid], sd=start_date, ed=end_date)[0]
-
-    @staticmethod
-    def import_ts(func_id, data, generate_metadata=True, *args, **kwargs):
-        """
-        Import TS data points in database or update an existing TS with new points
-        Encapsulation of IkatsApi.ts.create.
-
-        :param data: array of points where first column is timestamp (EPOCH ms) and second is value (float compatible)
-        :param func_id: Functional Identifier of the TS in Ikats
-        :param generate_metadata: flag indicating the need of generating Metadata (True default)
-        :param args: Other arguments
-        :param kwargs: Other keyword arguments
-
-        :type data: ndarray or list
-        :type func_id: str
-        :type generate_metadata: bool
-        :type args: tuple
-        :type kwargs: dict
-
-        :return: an object containing several information about the import
-        :rtype: dict containing information :
-           | {
-           |     'status' : True if import successful, False otherwise,
-           |     'errors' : *dict of errors*,
-           |     'numberOfSuccess': *Number of successful imported entries*,
-           |     'summary': *summary of import status*,
-           |     'tsuid': *tsuid if created*
-           |     'funcId': *functional identifier if created*
-           |     'responseStatus': *status of response*
-           | }
-        """
-        results = IkatsApi.ts.create(fid=func_id,
-                                     data=data,
-                                     generate_metadata=generate_metadata,
-                                     *args, **kwargs)
-        if results['status']:
-            return results
-        else:
-            raise IkatsException("TS %s couldn't be created" % func_id)
-
-    @staticmethod
-    def save_metadata(tsuid, md_name, md_value, data_type, force_update):
-        """
-        Saves metadata to Ikats database and log potential errors
-
-        :param tsuid: TSUID to link metadata with
-        :param md_name: name of the metadata to save
-        :param md_value: value of the metadata
-        :param data_type: type of the metadata
-        :param force_update: overwrite metadata value if exists (if True)
-
-        :type tsuid: str
-        :type md_name: str
-        :type md_value: str or int or float
-        :type data_type: DTYPE
-        :type force_update: bool
-        """
-        if not IkatsApi.md.create(
-                tsuid=tsuid,
-                name=md_name,
-                value=md_value,
-                data_type=data_type,
-                force_update=force_update):
-            Connector.log.error("Metadata '%s' couldn't be saved for TS %s", md_name, tsuid)
-
 
 class SSessionManager(object):
     """
@@ -142,11 +50,8 @@ class SSessionManager(object):
     # Spark context: For init a spark Session, or for RDD creation
     spark_context = None
 
-    # Number of point by chunk
-    CHUNK_SIZE = 50000
-
     @staticmethod
-    def get_chunks(tsuid, md):
+    def get_chunks(tsuid, sd, ed, period, nb_points_by_chunk):
         """
         Cut a TS into chunks according to it's number of points.
         Build np.array containing (([tsuid, chunk_index, start_date, end_date],...).
@@ -159,35 +64,40 @@ class SSessionManager(object):
         :param md: The meta data corresponding to the current tsuid
         :type md: dict
 
+        :param sd: start date of data
+        :type sd: int
+
+        :param ed: end date of data
+        :type ed: int
+
+        :param period: period of data
+        :type period: int
+
+        :param nb_points_by_chunk: size of chunks in number of points
+                                   (assuming time series are periodic and without holes)
+        :type nb_points_by_chunk: int
+
         :return: RDD containing ([tsuid, chunk_index, start_date, end_date],...)
         :rtype: RDD
         """
         # Init result
         data_to_compute = []
 
-        # 1/ Retrieve meta-data (start, end, nb_points)
+        # 1/ Chunk intervals computation
         # ----------------------------------------------------------------------
-        # Original time series information retrieved from metadata
-        sd = int(md['ikats_start_date'])
-        ed = int(md['ikats_end_date'])
-        ref_period = int(float(md['qual_ref_period']))
-        # qual_nb_points
-
-        # 2/ Chunk intervals computation
-        # ----------------------------------------------------------------------
-        # Prepare data to compute by defining intervals of final size CHUNK_SIZE
+        # Prepare data to compute by defining intervals of final size nb_points_by_chunk
 
         # Number of periods for one chunk
-        data_chunk_size = int(SSessionManager.CHUNK_SIZE * ref_period)
+        data_chunk_size = int(nb_points_by_chunk * period)
         # ex: data_chunk_size = 10
 
         # Computing intervals for chunk definition (limits are TIMESTAMPS)
         interval_limits = np.hstack(np.arange(sd, ed, data_chunk_size, dtype=np.int64))
         # ex: intervals = [ 10, 20, 30, 40 ], if sd=10, ed=40
 
-        # 3/ Define chunk of data to compute from intervals created
+        # 2/ Define chunk of data to compute from intervals created
         # ----------------------------------------------------------------------
-        # 3.1/ Defining chunks excluding last point of data within every chunk
+        # 2.1/ Defining chunks excluding last point of data within every chunk
         data_to_compute.extend([(tsuid,
                                  i,
                                  interval_limits[i],
@@ -195,7 +105,7 @@ class SSessionManager(object):
         # ex: intervals = [ 10, 20, 30, 40 ] => 2 chunks [10, 19] and [20, 29]
         # (last chunk added in step 2)
 
-        # 3.2/ Add the last interval, including last point of data
+        # 2.2/ Add the last interval, including last point of data
         data_to_compute.append((tsuid,
                                 len(interval_limits) - 1,
                                 interval_limits[-1],
@@ -243,9 +153,9 @@ class SSessionManager(object):
         # INPUT  : [(tsuid, chunk_id, start_date, end_date), ...]
         # OUTPUT : The dataset flat [[time1, value1], ...]
         rdd_chunk_data = rdd_ts_info \
-            .flatMap(lambda x: Connector.read_ts(tsuid=tsuid,
-                                                 start_date=int(x[2]),
-                                                 end_date=int(x[3])).tolist())
+            .flatMap(lambda x: IkatsApi.ts.read(tsuid_list=tsuid,
+                                                sd=int(x[2]),
+                                                ed=int(x[3])).tolist())
         # Note that result have to be list (if np.array, difficult to convert into Spark DF)
 
         # 2/ Put result into a Spark DataFrame
@@ -273,8 +183,8 @@ class SSessionManager(object):
         if not SSessionManager.spark_session:
             # Init a Spark Session for using spark Dataframes:
             # - use conf from a `SparkContext`
-            SSessionManager.spark_session = SparkSession.builder\
-                .config(conf=SSessionManager.spark_context.getConf())\
+            SSessionManager.spark_session = SparkSession.builder \
+                .config(conf=SSessionManager.spark_context.getConf()) \
                 .getOrCreate()
 
         return SSessionManager.spark_session
@@ -305,7 +215,8 @@ class SSessionManager(object):
         actually_stopped = False
         if SSessionManager.ikats_users > 0:
             SSessionManager.ikats_users -= 1
-            SSessionManager.log.info("SSessionManager: stopping SparkSession: users count decreased to %s", SSessionManager.ikats_users)
+            SSessionManager.log.info("SSessionManager: stopping SparkSession: users count decreased to %s",
+                                     SSessionManager.ikats_users)
         else:
             SSessionManager.log.warning("SSessionManager: stopping SparkSession: users count is already zero")
 
