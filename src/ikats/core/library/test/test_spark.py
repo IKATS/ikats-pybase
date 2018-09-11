@@ -19,7 +19,6 @@ from unittest import TestCase
 import logging
 from ikats.core.resource.api import IkatsApi
 
-
 LOGGER = logging.getLogger()
 
 
@@ -54,28 +53,19 @@ class TestSpark(TestCase):
         """
         Tests SSessionManager init
         """
-        # Init a Spark context
-        sc = ScManager()
-        sc.get()
-        spark_context = sc.spark_context
-
         # Init Spark session with SSessionManager wrapper
-        spark_session = SSessionManager.get(spark_context=spark_context)
+        spark_session = SSessionManager.get()
 
         # Check spark_session is not None
         self.assertIsNotNone(spark_session, msg="`spark_session is None.")
 
-    def test_SSessionManager_get_chunk(self):
-        """
-        Test case for method SsessionManager get chunk
-        """
-        # Init a Spark context
-        sc = ScManager()
-        sc.get()
-        spark_context = sc.spark_context
+        # Check spark_context is not None
+        self.assertIsNotNone(SSessionManager.get_context(), msg="`spark_context is None.")
 
-        # Init Spark session with SSessionManager wrapper
-        spark_session = SSessionManager.get(spark_context=spark_context)
+    def test_SparkUtils_get_chunk(self):
+        """
+        Test case for method SparkUtils get chunk
+        """
 
         # generate TS
         ts_list = gen_ts(1)
@@ -83,14 +73,17 @@ class TestSpark(TestCase):
         # Get the first ts
         tsuid = ts_list[0]
 
-        # Get meta data of first TS
+        # Get meta data of TS
         md = IkatsApi.md.read(ts_list)[tsuid]
+        sd = int(md['ikats_start_date'])
+        ed = int(md['ikats_end_date'])
+        period = int(float(md['qual_ref_period']))
 
         # lower the param `CHUNK_SIZE` to create multiple chunks with our shirt dataset
         # SSessionManager.CHUNK_SIZE = 10
 
         # Get chunks
-        result = SSessionManager.get_chunks(tsuid=tsuid, md=md)
+        result = SparkUtils.get_chunks(tsuid=tsuid, sd=sd, ed=ed, period=period)
         # should generate one single chunk (size of TS << SSessionManager.CHUNK_SIZE)
         # [('D73FA5000001000001000002000002000003000009',
         #   0,
@@ -102,46 +95,38 @@ class TestSpark(TestCase):
         # --------------
 
         # Check nb result (should be one, because size of TS << SSessionManager.CHUNK_SIZE)
-        msg = "SSessionManager.get_chunks, get {} chunks, expected 1".format(len(result))
+        msg = "SparkUtils.get_chunks, get {} chunks, expected 1".format(len(result))
         self.assertEqual(1, len(result), msg=msg)
 
         # get the inner of the list
         result = result[0]
 
         # Check first value (tsuid)
-        msg = "SSessionManager.get_chunks, first value (tsuid) is {}, expected {}".format(result[0], tsuid)
+        msg = "SparkUtils.get_chunks, first value (tsuid) is {}, expected {}".format(result[0], tsuid)
         self.assertEqual(tsuid, result[0], msg=msg)
 
         # Check second value (chunk index, 0: one single chunk !)
-        msg="SSessionManager.get_chunks, second value (chunk_index) is {}, expected 0".format(result[1])
+        msg = "SparkUtils.get_chunks, second value (chunk_index) is {}, expected 0".format(result[1])
         self.assertEqual(0, result[1], msg=msg)
 
         # Check third value (start date)
-        msg = "SSessionManager.get_chunks, third value (start date) is {}, expected {}".format(
+        msg = "SparkUtils.get_chunks, third value (start date) is {}, expected {}".format(
             str(result[2]), md['ikats_start_date'])
         self.assertEqual(md['ikats_start_date'], str(result[2]), msg=msg)
 
         # Check 4'th value (end date - 1)
-        msg = "SSessionManager.get_chunks, 4'th value (end date) is {}, expected {}".format(
+        msg = "SparkUtils.get_chunks, 4'th value (end date) is {}, expected {}".format(
             str(result[3] - 1), md['ikats_end_date'])
         self.assertEqual(md['ikats_end_date'], str(result[3] - 1), msg=msg)
         # Is end date -1 (and not just end date) because one single chunk (whch never
         # happens (if nb_points too low, no spark use, according to
         #  ScManager.check_spark_usage)
-        # TODO: test function for ScManager.check_spark_usage
+        # TODO: test function for SparkUtils.check_spark_usage
 
-    def test_SSessionManager_get_ts_by_chunks(self):
+    def test_SSessionManager_get_ts_by_chunks_as_df(self):
         """
-        Test case for method SsessionManager get_ts_by_chunks
+        Test case for method SsessionManager get_ts_by_chunks_as_df
         """
-        # Init a Spark context
-        sc = ScManager()
-        sc.get()
-        spark_context = sc.spark_context
-
-        # Init Spark session with SSessionManager wrapper
-        spark_session = SSessionManager.get(spark_context=spark_context)
-
         # generate TS
         ts_list = gen_ts(1)
 
@@ -154,12 +139,13 @@ class TestSpark(TestCase):
 
         # Get meta data of first TS
         md = IkatsApi.md.read(ts_list)[tsuid]
-
-        # lower the param `CHUNK_SIZE` to create multiple chunks with our shirt dataset
-        # SSessionManager.CHUNK_SIZE = 5
+        sd = int(md['ikats_start_date'])
+        ed = int(md['ikats_end_date'])
+        period = int(float(md['qual_ref_period']))
 
         # Import data into dataframe (["Timestamp", "Value"])
-        df = SSessionManager.get_ts_by_chunks(tsuid=tsuid, md=md)
+
+        df = SSessionManager.get_ts_by_chunks_as_df(tsuid=tsuid, sd=sd, ed=ed, period=period, nb_points_by_chunk=3)
 
         # Test values
         # ---------------
@@ -167,5 +153,5 @@ class TestSpark(TestCase):
         df_as_list = df.rdd.map(list).collect()
         # list [[time1, value1], ...]
 
-        msg="SSessionManager.get_ts_by_chunks, result is not correct."
+        msg = "SSessionManager.get_ts_by_chunks, result is not correct."
         self.assertEqual(data, df_as_list, msg=msg)

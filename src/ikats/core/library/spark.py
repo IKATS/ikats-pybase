@@ -51,71 +51,7 @@ class SSessionManager(object):
     spark_context = None
 
     @staticmethod
-    def get_chunks(tsuid, sd, ed, period, nb_points_by_chunk):
-        """
-        Cut a TS into chunks according to it's number of points.
-        Build np.array containing (([tsuid, chunk_index, start_date, end_date],...).
-
-        Necessary for extracting a TS in Spark.
-
-        :param tsuid: TS to get values from
-        :type tsuid: str
-
-        :param md: The meta data corresponding to the current tsuid
-        :type md: dict
-
-        :param sd: start date of data
-        :type sd: int
-
-        :param ed: end date of data
-        :type ed: int
-
-        :param period: period of data
-        :type period: int
-
-        :param nb_points_by_chunk: size of chunks in number of points
-                                   (assuming time series are periodic and without holes)
-        :type nb_points_by_chunk: int
-
-        :return: RDD containing ([tsuid, chunk_index, start_date, end_date],...)
-        :rtype: RDD
-        """
-        # Init result
-        data_to_compute = []
-
-        # 1/ Chunk intervals computation
-        # ----------------------------------------------------------------------
-        # Prepare data to compute by defining intervals of final size nb_points_by_chunk
-
-        # Number of periods for one chunk
-        data_chunk_size = int(nb_points_by_chunk * period)
-        # ex: data_chunk_size = 10
-
-        # Computing intervals for chunk definition (limits are TIMESTAMPS)
-        interval_limits = np.hstack(np.arange(sd, ed, data_chunk_size, dtype=np.int64))
-        # ex: intervals = [ 10, 20, 30, 40 ], if sd=10, ed=40
-
-        # 2/ Define chunk of data to compute from intervals created
-        # ----------------------------------------------------------------------
-        # 2.1/ Defining chunks excluding last point of data within every chunk
-        data_to_compute.extend([(tsuid,
-                                 i,
-                                 interval_limits[i],
-                                 interval_limits[i + 1] - 1) for i in range(len(interval_limits) - 1)])
-        # ex: intervals = [ 10, 20, 30, 40 ] => 2 chunks [10, 19] and [20, 29]
-        # (last chunk added in step 2)
-
-        # 2.2/ Add the last interval, including last point of data
-        data_to_compute.append((tsuid,
-                                len(interval_limits) - 1,
-                                interval_limits[-1],
-                                ed + 1))
-        # ex: data_to_compute => 4 chunks  [[10, 19], [20, 29], [30, 40]]
-
-        return data_to_compute
-
-    @staticmethod
-    def get_ts_by_chunks(tsuid, md):
+    def get_ts_by_chunks_as_df(tsuid, sd, ed, period, nb_points_by_chunk=50000):
         """
         Read current TS (`tsuid`), chunked with spark.
         For now, it's the optimal way to read TS with Spark DataFrame.
@@ -134,28 +70,29 @@ class SSessionManager(object):
         :return: DataFrame containing all data from current TS
         :rtype: pyspark.sql.dataframe.DataFrame
         """
-        # 0/ Input check
-        # ----------------------------------------------------------------------
-        # Need a spark context to init an RDD
-        if SSessionManager.spark_context is None:
-            SSessionManager.log.error("SSessionManager: Trying to get TS by chunk with no spark_context."
-                                      " Please, launch `get` or `create` method with proper arg. ")
-            ValueError("No spark context.")
+
+        # init or retrieve spark session
+        SSessionManager.get()
+
+        # retrieve spark context
+        sc = SSessionManager.get_context()
 
         # 1/ Get the chunks, and read TS chunked
         # ----------------------------------------------------------------------
         # Get the chunks, and distribute them with Spark
         # Format: [(tsuid, chunk_id, start_date, end_date), ...]
-        chunks = SSessionManager.get_chunks(tsuid=tsuid, md=md)
-        rdd_ts_info = SSessionManager.spark_context.parallelize(chunks, len(chunks))
+        chunks = SparkUtils.get_chunks(tsuid=tsuid, sd=sd, ed=ed, period=period,
+                                       nb_points_by_chunk=nb_points_by_chunk)
+
+        rdd_ts_info = sc.parallelize(chunks, len(chunks))
 
         # DESCRIPTION : Get the points within chunk range and suppress empty chunks
         # INPUT  : [(tsuid, chunk_id, start_date, end_date), ...]
         # OUTPUT : The dataset flat [[time1, value1], ...]
         rdd_chunk_data = rdd_ts_info \
-            .flatMap(lambda x: IkatsApi.ts.read(tsuid_list=tsuid,
+            .flatMap(lambda x: IkatsApi.ts.read(tsuid_list=x[0],
                                                 sd=int(x[2]),
-                                                ed=int(x[3])).tolist())
+                                                ed=int(x[3])))
         # Note that result have to be list (if np.array, difficult to convert into Spark DF)
 
         # 2/ Put result into a Spark DataFrame
@@ -169,7 +106,7 @@ class SSessionManager(object):
         return df
 
     @staticmethod
-    def create(spark_context):
+    def create():
         """
         Create a new spark session from an existing spark context.
         :param spark_context: A SparkContext (ex: ScManager.spark_context)
@@ -178,23 +115,18 @@ class SSessionManager(object):
         :return: The spark Session
         :rtype: SparkSession
         """
-        SSessionManager.spark_context = spark_context
 
         if not SSessionManager.spark_session:
             # Init a Spark Session for using spark Dataframes:
             # - use conf from a `SparkContext`
-            SSessionManager.spark_session = SparkSession.builder \
-                .config(conf=SSessionManager.spark_context.getConf()) \
-                .getOrCreate()
+            SSessionManager.spark_session = SparkSession(SSessionManager.get_context())
 
         return SSessionManager.spark_session
 
     @staticmethod
-    def get(spark_context):
+    def get():
         """
         Get a spark session if exists or create a new one.
-        :param spark_context: A SparkContext (ex: ScManager.spark_context)
-        :type spark_context: SparkContext
 
         :return: The spark session
         :rtype: SparkSession
@@ -202,7 +134,25 @@ class SSessionManager(object):
         SSessionManager.ikats_users += 1
 
         # Get or Create is yet implemented in `create` method.
-        return SSessionManager.create(spark_context)
+        if not SSessionManager.spark_session:
+            SSessionManager.create()
+
+        return SSessionManager.spark_session
+
+    @staticmethod
+    def get_context():
+        """
+        Get a spark context from a spark session if exists or create a new one.
+
+        :return: The spark context
+        :rtype: SparkContext
+        """
+
+        # create a SSessionManager spark context if not already initialized
+        if not SSessionManager.spark_context:
+            SSessionManager.spark_context = ScManager.get()
+
+        return SSessionManager.spark_context
 
     @staticmethod
     def stop():
@@ -328,6 +278,48 @@ class ScManager(object):
         return actually_stopped
 
     @staticmethod
+    def get_ts_by_chunks(tsuid, sd, ed, period, nb_points_by_chunk=50000):
+        """
+        Read current TS (`tsuid`), chunked with spark.
+
+        Action performed:
+            * get chunks intervals (id, start, end) (`get_chunks`)
+            * read current TS (`tsuid`) chunked with spark (RDD)
+
+        :param tsuid: TS to get values from
+        :type tsuid: str
+
+        :param md: The meta data corresponding to the current tsuid
+        :type md: dict
+
+        :return: RDD containing all data from current TS
+        :rtype: pyspark.rdd.RDD
+        """
+
+        # Init or retrieve spark context
+        sc = ScManager.get()
+
+        # 1/ Get the chunks
+        # ----------------------------------------------------------------------
+        # Get the chunks, and distribute them with Spark
+        # Format: [(tsuid, chunk_id, start_date, end_date), ...]
+        chunks = ScManager.get_chunks(tsuid=tsuid, sd=sd, ed=ed, period=period,
+                                      nb_points_by_chunk=nb_points_by_chunk)
+
+        rdd_ts_info = sc.parallelize(chunks, len(chunks))
+
+        # 2/ Read TS chunked
+        # DESCRIPTION : Get the points within chunk range and suppress empty chunks
+        # INPUT  : [(tsuid, chunk_id, start_date, end_date), ...]
+        # OUTPUT : The dataset flat [[time1, value1], ...]
+        rdd_chunk_data = rdd_ts_info \
+            .map(lambda x: IkatsApi.ts.read(tsuid_list=tsuid,
+                                            sd=int(x[2]),
+                                            ed=int(x[3])))
+
+        return rdd_chunk_data
+
+    @staticmethod
     def only_shared_tdm():
         """
         This function filters the defined TDM in ResourceLocator
@@ -423,6 +415,9 @@ class ScManager(object):
             ScManager.spark_context.stop()
             ScManager.spark_context = None
 
+
+class SparkUtils:
+
     @staticmethod
     def check_spark_usage(tsuid_list, meta_list=None, nb_ts_criteria=100, nb_points_by_chunk=50000):
         """
@@ -508,6 +503,70 @@ class ScManager(object):
         ScManager.log.info("Spark usage set to {}.".format(spark_usage))
 
         return spark_usage
+
+    @staticmethod
+    def get_chunks(tsuid, sd, ed, period, nb_points_by_chunk=50000):
+        """
+        Cut a TS into chunks according to it's number of points.
+        Build np.array containing (([tsuid, chunk_index, start_date, end_date],...).
+
+        Necessary for extracting a TS in Spark.
+
+        :param tsuid: TS to get values from
+        :type tsuid: str
+
+        :param md: The meta data corresponding to the current tsuid
+        :type md: dict
+
+        :param sd: start date of data
+        :type sd: int
+
+        :param ed: end date of data
+        :type ed: int
+
+        :param period: period of data
+        :type period: int
+
+        :param nb_points_by_chunk: size of chunks in number of points
+                                   (assuming time series are periodic and without holes)
+        :type nb_points_by_chunk: int
+
+        :return: RDD containing ([tsuid, chunk_index, start_date, end_date],...)
+        :rtype: RDD
+        """
+        # Init result
+        data_to_compute = []
+
+        # 1/ Chunk intervals computation
+        # ----------------------------------------------------------------------
+        # Prepare data to compute by defining intervals of final size nb_points_by_chunk
+
+        # Number of periods for one chunk
+        data_chunk_size = int(nb_points_by_chunk * period)
+        # ex: data_chunk_size = 10
+
+        # Computing intervals for chunk definition (limits are TIMESTAMPS)
+        interval_limits = np.hstack(np.arange(sd, ed, data_chunk_size, dtype=np.int64))
+        # ex: intervals = [ 10, 20, 30, 40 ], if sd=10, ed=40
+
+        # 2/ Define chunk of data to compute from intervals created
+        # ----------------------------------------------------------------------
+        # 2.1/ Defining chunks excluding last point of data within every chunk
+        data_to_compute.extend([(tsuid,
+                                 i,
+                                 interval_limits[i],
+                                 interval_limits[i + 1] - 1) for i in range(len(interval_limits) - 1)])
+        # ex: intervals = [ 10, 20, 30, 40 ] => 2 chunks [10, 19] and [20, 29]
+        # (last chunk added in step 2)
+
+        # 2.2/ Add the last interval, including last point of data
+        data_to_compute.append((tsuid,
+                                len(interval_limits) - 1,
+                                interval_limits[-1],
+                                ed + 1))
+        # ex: data_to_compute => 4 chunks  [[10, 19], [20, 29], [30, 40]]
+
+        return data_to_compute
 
 
 class ListAccumulatorParam(AccumulatorParam):
