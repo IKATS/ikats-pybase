@@ -92,9 +92,9 @@ class SSessionManager(object):
         # INPUT  : [(tsuid, chunk_id, start_date, end_date), ...]
         # OUTPUT : The dataset flat [[time1, value1], ...]
         rdd_chunk_data = rdd_ts_info \
-            .flatMap(lambda x: IkatsApi.ts.read(tsuid_list=x[0],
-                                                sd=int(x[2]),
-                                                ed=int(x[3]))[0].tolist())
+            .flatMap(lambda x: [(x[1], y[0], y[1]) for y in IkatsApi.ts.read(tsuid_list=x[0],
+                                                                             sd=int(x[2]),
+                                                                             ed=int(x[3]))[0].tolist()])
         # Note that result have to be list (if np.array, difficult to convert into Spark DF)
 
         # 2/ Put result into a Spark DataFrame
@@ -103,7 +103,7 @@ class SSessionManager(object):
         # DESCRIPTION : Get the points within chunk range and suppress empty chunks
         # INPUT  : [[time1, value1], ...]
         # OUTPUT : DataFrame containing dataset (columns [Timestamp, Value])
-        df = rdd_chunk_data.toDF(["Timestamp", "Value"])
+        df = rdd_chunk_data.toDF(["Index", "Timestamp", "Value"])
 
         return df
 
