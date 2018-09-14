@@ -83,7 +83,7 @@ class TestSpark(TestCase):
         # SSessionManager.CHUNK_SIZE = 10
 
         # Get chunks
-        result = SparkUtils.get_chunks(tsuid=tsuid, sd=sd, ed=ed, period=period)
+        result = SparkUtils.get_chunks_def(tsuid=tsuid, sd=sd, ed=ed, period=period)
         # should generate one single chunk (size of TS << SSessionManager.CHUNK_SIZE)
         # [('D73FA5000001000001000002000002000003000009',
         #   0,
@@ -95,27 +95,27 @@ class TestSpark(TestCase):
         # --------------
 
         # Check nb result (should be one, because size of TS << SSessionManager.CHUNK_SIZE)
-        msg = "SparkUtils.get_chunks, get {} chunks, expected 1".format(len(result))
+        msg = "SparkUtils.get_chunks_def, get {} chunks, expected 1".format(len(result))
         self.assertEqual(1, len(result), msg=msg)
 
         # get the inner of the list
         result = result[0]
 
         # Check first value (tsuid)
-        msg = "SparkUtils.get_chunks, first value (tsuid) is {}, expected {}".format(result[0], tsuid)
+        msg = "SparkUtils.get_chunks_def, first value (tsuid) is {}, expected {}".format(result[0], tsuid)
         self.assertEqual(tsuid, result[0], msg=msg)
 
         # Check second value (chunk index, 0: one single chunk !)
-        msg = "SparkUtils.get_chunks, second value (chunk_index) is {}, expected 0".format(result[1])
+        msg = "SparkUtils.get_chunks_def, second value (chunk_index) is {}, expected 0".format(result[1])
         self.assertEqual(0, result[1], msg=msg)
 
         # Check third value (start date)
-        msg = "SparkUtils.get_chunks, third value (start date) is {}, expected {}".format(
+        msg = "SparkUtils.get_chunks_def, third value (start date) is {}, expected {}".format(
             str(result[2]), md['ikats_start_date'])
         self.assertEqual(md['ikats_start_date'], str(result[2]), msg=msg)
 
         # Check 4'th value (end date - 1)
-        msg = "SparkUtils.get_chunks, 4'th value (end date) is {}, expected {}".format(
+        msg = "SparkUtils.get_chunks_def, 4'th value (end date) is {}, expected {}".format(
             str(result[3] - 1), md['ikats_end_date'])
         self.assertEqual(md['ikats_end_date'], str(result[3] - 1), msg=msg)
         # Is end date -1 (and not just end date) because one single chunk (whch never
@@ -150,8 +150,8 @@ class TestSpark(TestCase):
         # Test values
         # ---------------
         # Collect values of `df`
-        df_as_list = df.rdd.map(list).collect()
+        df_as_list = df.select('Timestamp', 'Value').rdd.map(list).collect()
         # list [[time1, value1], ...]
 
-        msg = "SSessionManager.get_ts_by_chunks, result is not correct."
+        msg = "SSessionManager.get_ts_by_chunks_as_df, result is not correct."
         self.assertEqual(data, df_as_list, msg=msg)

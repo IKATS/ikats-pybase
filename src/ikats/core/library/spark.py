@@ -33,22 +33,18 @@ from ikats.core.config.ConfigReader import ConfigReader
 class SSessionManager(object):
     """
     Spark Session manager
-    Used to manage spark session creation and closure. Note that a Spark Session is composed
-    by some info from a Spark Context.
+    Used to manage spark session creation and closure.
+    Note that a Spark Session includes a Spark Context.
     Introduced for usage of spark DataFrame.
     """
 
     log = logging.getLogger("SSessionManager")
-
-    APPNAME_UNIT_TEST_IKATS = "UNIT_TEST_IKATS"
 
     # Number of current algorithms needing the spark context
     ikats_users = 0
 
     # Spark session: for DataFrame creation
     spark_session = None
-    # Spark context: For init a spark Session, or for RDD creation
-    spark_context = None
 
     @staticmethod
     def get_ts_by_chunks_as_df(tsuid, sd, ed, period, nb_points_by_chunk=50000):
@@ -57,22 +53,28 @@ class SSessionManager(object):
         For now, it's the optimal way to read TS with Spark DataFrame.
 
         Action performed:
-            * get chunks intervals (id, start, end) (`get_chunks`)
+            * get chunks intervals (id, start, end) (`get_chunks_def`)
             * read current TS (`tsuid`) chunked with spark (RDD)
             * transform resulting rdd into Spark DataFrame (DF)
 
         :param tsuid: TS to get values from
         :type tsuid: str
 
-        :param md: The meta data corresponding to the current tsuid
-        :type md: dict
+        :param sd: The meta data corresponding to the ts start date
+        :type sd: int
+
+        :param ed: The meta data corresponding to the ts end date
+        :type ed: int
+
+        :param period: The meta data corresponding to the ts period
+        :type period: int
+
+        :param nb_points_by_chunk: size of chunks in number of points (assuming timeserie is periodic and without holes)
+        :type nb_points_by_chunk: int
 
         :return: DataFrame containing all data from current TS
         :rtype: pyspark.sql.dataframe.DataFrame
         """
-
-        # init or retrieve spark session
-        SSessionManager.get()
 
         # retrieve spark context
         sc = SSessionManager.get_context()
@@ -81,8 +83,8 @@ class SSessionManager(object):
         # ----------------------------------------------------------------------
         # Get the chunks, and distribute them with Spark
         # Format: [(tsuid, chunk_id, start_date, end_date), ...]
-        chunks = SparkUtils.get_chunks(tsuid=tsuid, sd=sd, ed=ed, period=period,
-                                       nb_points_by_chunk=nb_points_by_chunk)
+        chunks = SparkUtils.get_chunks_def(tsuid=tsuid, sd=sd, ed=ed, period=period,
+                                           nb_points_by_chunk=nb_points_by_chunk)
 
         rdd_ts_info = sc.parallelize(chunks, len(chunks))
 
@@ -92,7 +94,7 @@ class SSessionManager(object):
         rdd_chunk_data = rdd_ts_info \
             .flatMap(lambda x: IkatsApi.ts.read(tsuid_list=x[0],
                                                 sd=int(x[2]),
-                                                ed=int(x[3])))
+                                                ed=int(x[3]))[0].tolist())
         # Note that result have to be list (if np.array, difficult to convert into Spark DF)
 
         # 2/ Put result into a Spark DataFrame
@@ -118,8 +120,11 @@ class SSessionManager(object):
 
         if not SSessionManager.spark_session:
             # Init a Spark Session for using spark Dataframes:
-            # - use conf from a `SparkContext`
-            SSessionManager.spark_session = SparkSession(SSessionManager.get_context())
+            master = ConfigReader().get('cluster', 'spark.url')
+            SSessionManager.spark_session = SparkSession.builder \
+                .master(master) \
+                .appName('Ikats') \
+                .getOrCreate()
 
         return SSessionManager.spark_session
 
@@ -148,11 +153,10 @@ class SSessionManager(object):
         :rtype: SparkContext
         """
 
-        # create a SSessionManager spark context if not already initialized
-        if not SSessionManager.spark_context:
-            SSessionManager.spark_context = ScManager.get()
+        if not SSessionManager.spark_session:
+            SSessionManager.create()
 
-        return SSessionManager.spark_context
+        return SSessionManager.spark_session.sparkContext
 
     @staticmethod
     def stop():
@@ -203,14 +207,13 @@ class ScManager(object):
     """
     Spark Context manager
     Used to manage the spark context creation and closure
+
+    NB : DEPRECATED since we use SparkSession instead
     """
 
     log = logging.getLogger("ScManager")
 
     APPNAME_UNIT_TEST_IKATS = "UNIT_TEST_IKATS"
-
-    # Number of current algorithms needing the spark context
-    ikats_users = 0
 
     # Spark context
     spark_context = None
@@ -222,60 +225,30 @@ class ScManager(object):
     @staticmethod
     def create():
         """
-        Create a new spark context
+        Get or create a spark context from a spark session
         :return: The spark Context
         :rtype: SparkContext
         """
-        if not ScManager.spark_context:
-            # noinspection PyProtectedMember
-            if not SparkContext._active_spark_context:
-                master = ConfigReader().get('cluster', 'spark.url')
-                ScManager.spark_context = SparkContext(
-                    appName='Ikats',
-                    master=master
-                )
-        return ScManager.spark_context
+        return SSessionManager.get_context()
 
     @staticmethod
     def get():
         """
-        Get a spark context if exists or create a new one
+        Get a spark context from current session if exists or create a new one
         :return: The spark Context
         :rtype: SparkContext
         """
-        ScManager.ikats_users += 1
-        if not ScManager.spark_context:
-            return ScManager.create()
-        else:
-            return ScManager.spark_context
+        return SSessionManager.get_context()
 
     @staticmethod
     def stop():
         """
-        Request to stop context
-        The Spark context will continue to run if other algo needs it
-        :return: True if the spark context was actually stopped
+        Request to stop session (and then context)
+        The Spark session will continue to run if other algo needs it
+        :return: True if the spark session was actually stopped
         :rtype: bool
         """
-        actually_stopped = False
-        if ScManager.ikats_users > 0:
-            ScManager.ikats_users -= 1
-            ScManager.log.info("ScManager: stopping SparkContext: users count decreased to %s", ScManager.ikats_users)
-        else:
-            ScManager.log.warning("ScManager: stopping SparkContext: users count is already zero")
-
-        if ScManager.ikats_users == 0:
-            if ScManager.spark_context is None:
-                ScManager.log.error("ScManager: stopping SparkContext: unexpected error: undefined SparkContext")
-                raise SystemError('Trying to close an already closed Spark context')
-            ScManager.spark_context.stop()
-            ScManager.log.info(
-                "ScManager: stopping SparkContext without user left: ScManager.sc is stopped and set to None.")
-
-            actually_stopped = True
-            ScManager.spark_context = None
-
-        return actually_stopped
+        return SSessionManager.stop()
 
     @staticmethod
     def get_ts_by_chunks(tsuid, sd, ed, period, nb_points_by_chunk=50000):
@@ -283,7 +256,7 @@ class ScManager(object):
         Read current TS (`tsuid`), chunked with spark.
 
         Action performed:
-            * get chunks intervals (id, start, end) (`get_chunks`)
+            * get chunks intervals (id, start, end) (`get_chunks_def`)
             * read current TS (`tsuid`) chunked with spark (RDD)
 
         :param tsuid: TS to get values from
@@ -373,9 +346,6 @@ class ScManager(object):
         ScManager.stop_all()
         if ScManager.spark_context is None:
             ScManager.create_tu_spark_context(ScManager.APPNAME_UNIT_TEST_IKATS)
-
-            # at most one user: the unit-test
-            ScManager.ikats_users += 1
         else:
             raise Exception("Unexpected case: get_tu_spark_context() :" +
                             " a spark_context already exists ! {}".format(str(ScManager.spark_context)))
@@ -403,17 +373,14 @@ class ScManager(object):
     @staticmethod
     def stop_all():
         """
-        Forces the stop of the defined SparkContext: ScManager.sc
-          - sets  ScManager.ikats_users to 0
-          - calls ScManager.sc.stop()
-          - sets ScManager.sc to None
+        Forces the stop of the defined SparkContext: SSessionManager.SparkContext
+          - calls SSessionManager.stop()
 
-        Beware: do not use this method in operational mode: method to be used in TU only.
         """
-        ScManager.ikats_users = 0
-        if ScManager.spark_context is not None:
-            ScManager.spark_context.stop()
-            ScManager.spark_context = None
+        SSessionManager.ikats_users = 0
+        if SSessionManager.spark_session is not None:
+            SSessionManager.stop()
+            SSessionManager.spark_session = None
 
 
 class SparkUtils:
@@ -505,7 +472,7 @@ class SparkUtils:
         return spark_usage
 
     @staticmethod
-    def get_chunks(tsuid, sd, ed, period, nb_points_by_chunk=50000):
+    def get_chunks_def(tsuid, sd, ed, period, nb_points_by_chunk=50000):
         """
         Cut a TS into chunks according to it's number of points.
         Build np.array containing (([tsuid, chunk_index, start_date, end_date],...).
@@ -527,8 +494,7 @@ class SparkUtils:
         :param period: period of data
         :type period: int
 
-        :param nb_points_by_chunk: size of chunks in number of points
-                                   (assuming time series are periodic and without holes)
+        :param nb_points_by_chunk: size of chunks in number of points (assuming timeserie is periodic and without holes)
         :type nb_points_by_chunk: int
 
         :return: RDD containing ([tsuid, chunk_index, start_date, end_date],...)
