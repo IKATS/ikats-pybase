@@ -17,6 +17,7 @@ limitations under the License.
 import logging
 import numpy as np
 
+from ikats.core.library.exception import IkatsException
 from ikats.core.resource.api import IkatsApi
 from ikats.core.resource.client import TemporalDataMgr
 from ikats.core.resource.client.non_temporal_data_mgr import NonTemporalDataMgr
@@ -497,8 +498,8 @@ class SparkUtils:
         :param nb_points_by_chunk: size of chunks in number of points (assuming timeserie is periodic and without holes)
         :type nb_points_by_chunk: int
 
-        :return: RDD containing ([tsuid, chunk_index, start_date, end_date],...)
-        :rtype: RDD
+        :return: list containing chunks definition ([tsuid, chunk_index, start_date, end_date],...)
+        :rtype: list
         """
         # Init result
         data_to_compute = []
@@ -533,6 +534,29 @@ class SparkUtils:
         # ex: data_to_compute => 4 chunks  [[10, 19], [20, 29], [30, 40]]
 
         return data_to_compute
+
+    @staticmethod
+    def save_data(fid, data):
+        """
+        Saves a data corresponding to timeseries points to database by providing functional identifier.
+
+        :param fid: functional identifier for the new timeseries
+        :param data: data to save
+
+        :type fid: str
+        :type data: np.array
+
+        :return: the TSUID
+        :rtype: str
+
+        :raises IkatsException: if TS couldn't be created
+        """
+
+        results = IkatsApi.ts.create(fid=fid, data=data, generate_metadata=False, sparkified=True)
+        if results['status']:
+            return results['tsuid']
+        else:
+            raise IkatsException("TS %s couldn't be created" % fid)
 
 
 class ListAccumulatorParam(AccumulatorParam):
