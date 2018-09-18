@@ -48,7 +48,7 @@ class SSessionManager(object):
     spark_session = None
 
     @staticmethod
-    def get_ts_by_chunks_as_df(tsuid, sd, ed, period, nb_points_by_chunk=50000):
+    def get_ts_by_chunks_as_df(tsuid, sd, ed, period, nb_points_by_chunk=50000, overlap=None):
         """
         Read current TS (`tsuid`), chunked with spark.
         For now, it's the optimal way to read TS with Spark DataFrame.
@@ -85,7 +85,7 @@ class SSessionManager(object):
         # Get the chunks, and distribute them with Spark
         # Format: [(tsuid, chunk_id, start_date, end_date), ...]
         chunks = SparkUtils.get_chunks_def(tsuid=tsuid, sd=sd, ed=ed, period=period,
-                                           nb_points_by_chunk=nb_points_by_chunk)
+                                           nb_points_by_chunk=nb_points_by_chunk, overlap=overlap)
 
         rdd_ts_info = sc.parallelize(chunks, len(chunks))
 
@@ -106,7 +106,7 @@ class SSessionManager(object):
         # OUTPUT : DataFrame containing dataset (columns [Timestamp, Value])
         df = rdd_chunk_data.toDF(["Index", "Timestamp", "Value"])
 
-        return df
+        return df, len(chunks)
 
     @staticmethod
     def create():
@@ -473,7 +473,7 @@ class SparkUtils:
         return spark_usage
 
     @staticmethod
-    def get_chunks_def(tsuid, sd, ed, period, nb_points_by_chunk=50000):
+    def get_chunks_def(tsuid, sd, ed, period, nb_points_by_chunk=50000, overlap=None):
         """
         Cut a TS into chunks according to it's number of points.
         Build np.array containing (([tsuid, chunk_index, start_date, end_date],...).
@@ -512,6 +512,13 @@ class SparkUtils:
         data_chunk_size = int(nb_points_by_chunk * period)
         # ex: data_chunk_size = 10
 
+        if overlap is None or overlap == 0:
+            coef = 1
+            overlap = None
+        else:
+            coef = 2
+            overlap_time = overlap * period
+
         # Computing intervals for chunk definition (limits are TIMESTAMPS)
         interval_limits = np.hstack(np.arange(sd, ed, data_chunk_size, dtype=np.int64))
         # ex: intervals = [ 10, 20, 30, 40 ], if sd=10, ed=40
@@ -520,7 +527,7 @@ class SparkUtils:
         # ----------------------------------------------------------------------
         # 2.1/ Defining chunks excluding last point of data within every chunk
         data_to_compute.extend([(tsuid,
-                                 i,
+                                 coef * i,
                                  interval_limits[i],
                                  interval_limits[i + 1] - 1) for i in range(len(interval_limits) - 1)])
         # ex: intervals = [ 10, 20, 30, 40 ] => 2 chunks [10, 19] and [20, 29]
@@ -528,12 +535,20 @@ class SparkUtils:
 
         # 2.2/ Add the last interval, including last point of data
         data_to_compute.append((tsuid,
-                                len(interval_limits) - 1,
+                                coef * (len(interval_limits) - 1),
                                 interval_limits[-1],
                                 ed + 1))
         # ex: data_to_compute => 4 chunks  [[10, 19], [20, 29], [30, 40]]
 
-        return data_to_compute
+        # 2.3/ add inter chunks definition with overlap
+        if overlap is not None:
+            data_to_compute.extend([(tsuid,
+                                     2 * i + 1,
+                                     interval_limits[i + 1] - overlap_time,
+                                     interval_limits[i + 1] + overlap_time - 1) for i in
+                                    range(len(interval_limits) - 1)])
+
+        return sorted(data_to_compute, key=lambda tup: tup[1])
 
     @staticmethod
     def save_data(fid, data):
