@@ -73,9 +73,12 @@ class SSessionManager(object):
         :param nb_points_by_chunk: size of chunks in number of points (assuming timeserie is periodic and without holes)
         :type nb_points_by_chunk: int
 
-        :return: DataFrame containing all data from current TS
+        :return: DataFrame containing all data from current TS (["Index", "Timestamp", "Value"])
         :rtype: pyspark.sql.dataframe.DataFrame
         """
+
+        # Review#495: (FTA) what is overlap ?
+
 
         # retrieve spark context
         sc = SSessionManager.get_context()
@@ -96,14 +99,14 @@ class SSessionManager(object):
             .flatMap(lambda x: [(x[1], y[0], y[1]) for y in IkatsApi.ts.read(tsuid_list=x[0],
                                                                              sd=int(x[2]),
                                                                              ed=int(x[3]))[0].tolist()])
-        # Note that result have to be list (if np.array, difficult to convert into Spark DF)
+        # Note that result has to be list (if np.array, difficult to convert into Spark DF)
 
         # 2/ Put result into a Spark DataFrame
         # ----------------------------------------------------------------------
         # Init a DataFrame for one single ts_data
         # DESCRIPTION : Get the points within chunk range and suppress empty chunks
         # INPUT  : [[time1, value1], ...]
-        # OUTPUT : DataFrame containing dataset (columns [Timestamp, Value])
+        # OUTPUT : DataFrame containing dataset (columns [Index, Timestamp, Value])
         df = rdd_chunk_data.toDF(["Index", "Timestamp", "Value"])
 
         return df, len(chunks)
@@ -213,7 +216,9 @@ class ScManager(object):
     """
 
     log = logging.getLogger("ScManager")
+    log.warning("ScManager is deprecated, use SparkSession instead")
 
+    # Review#495: you should not include "TEST" instrumentation in the prod code
     APPNAME_UNIT_TEST_IKATS = "UNIT_TEST_IKATS"
 
     # Spark context
@@ -230,6 +235,7 @@ class ScManager(object):
         :return: The spark Context
         :rtype: SparkContext
         """
+        # Review#495: There is a getOrCreate function, why not using it ?
         return SSessionManager.get_context()
 
     @staticmethod
@@ -239,6 +245,7 @@ class ScManager(object):
         :return: The spark Context
         :rtype: SparkContext
         """
+        # Review#495: There is a getOrCreate function, why not using it ?
         return SSessionManager.get_context()
 
     @staticmethod
@@ -412,7 +419,7 @@ class SparkUtils:
         to the available amount of data.
         :rtype spark_usage: bool
 
-        Criterion: if one of these criterion is true -> use spark
+        Criterion: if one of these criteria is true -> use spark
             * number of TS > `nb_ts_criteria`
             * nb_point of one of the TS not available
             * nb_point of one of the TS > 2 * `nb_points_by_chunk`
@@ -475,16 +482,13 @@ class SparkUtils:
     @staticmethod
     def get_chunks_def(tsuid, sd, ed, period, nb_points_by_chunk=50000, overlap=None):
         """
-        Cut a TS into chunks according to it's number of points.
+        Split a TS into chunks according to it's number of points.
         Build np.array containing (([tsuid, chunk_index, start_date, end_date],...).
 
         Necessary for extracting a TS in Spark.
 
         :param tsuid: TS to get values from
         :type tsuid: str
-
-        :param md: The meta data corresponding to the current tsuid
-        :type md: dict
 
         :param sd: start date of data
         :type sd: int
@@ -501,6 +505,13 @@ class SparkUtils:
         :return: list containing chunks definition ([tsuid, chunk_index, start_date, end_date],...)
         :rtype: list
         """
+
+        # Review#495: (FTA) overlap ? explain
+
+        # Review#495: (FTA) Function is wrong/needs clarification for the following call:
+        #                   SparkUtils.get_chunks_def("123TS", 1000, 10000, 1000, nb_points_by_chunk=2, overlap=None)
+        #                   end date=10000 but the last chunk (#4) has range between [90000,10001]
+
         # Init result
         data_to_compute = []
 
@@ -553,9 +564,9 @@ class SparkUtils:
     @staticmethod
     def save_data(fid, data):
         """
-        Saves a data corresponding to timeseries points to database by providing functional identifier.
+        Saves a data corresponding to time series points to database by providing functional identifier.
 
-        :param fid: functional identifier for the new timeseries
+        :param fid: functional identifier for the new time series
         :param data: data to save
 
         :type fid: str

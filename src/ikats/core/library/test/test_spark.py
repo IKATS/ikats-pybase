@@ -123,6 +123,8 @@ class TestSpark(TestCase):
         #  ScManager.check_spark_usage)
         # TODO: test function for SparkUtils.check_spark_usage
 
+        # Review#495: TODO remaining
+
     def test_SSessionManager_get_ts_by_chunks_as_df(self):
         """
         Test case for method SsessionManager get_ts_by_chunks_as_df
