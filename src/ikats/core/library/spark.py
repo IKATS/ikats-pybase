@@ -56,6 +56,7 @@ class SSessionManager(object):
         Action performed:
             * get chunks intervals (id, start, end) (`get_chunks_def`)
             * read current TS (`tsuid`) chunked with spark (RDD)
+            * add inter chunks if overlap is defined
             * transform resulting rdd into Spark DataFrame (DF)
 
         :param tsuid: TS to get values from
@@ -73,12 +74,13 @@ class SSessionManager(object):
         :param nb_points_by_chunk: size of chunks in number of points (assuming timeserie is periodic and without holes)
         :type nb_points_by_chunk: int
 
+        :param overlap: overlap used to define inter-chunks (in number of points)
+        :type overlap: int
+
         :return: DataFrame containing all data from current TS (["Index", "Timestamp", "Value"])
-        :rtype: pyspark.sql.dataframe.DataFrame
+                 and the number of chunks defined in the function
+        :rtype: tuple (pyspark.sql.dataframe.DataFrame, int)
         """
-
-        # Review#495: (FTA) what is overlap ?
-
 
         # retrieve spark context
         sc = SSessionManager.get_context()
@@ -218,7 +220,6 @@ class ScManager(object):
     log = logging.getLogger("ScManager")
     log.warning("ScManager is deprecated, use SparkSession instead")
 
-    # Review#495: you should not include "TEST" instrumentation in the prod code
     APPNAME_UNIT_TEST_IKATS = "UNIT_TEST_IKATS"
 
     # Spark context
@@ -235,7 +236,6 @@ class ScManager(object):
         :return: The spark Context
         :rtype: SparkContext
         """
-        # Review#495: There is a getOrCreate function, why not using it ?
         return SSessionManager.get_context()
 
     @staticmethod
@@ -245,7 +245,6 @@ class ScManager(object):
         :return: The spark Context
         :rtype: SparkContext
         """
-        # Review#495: There is a getOrCreate function, why not using it ?
         return SSessionManager.get_context()
 
     @staticmethod
@@ -484,6 +483,7 @@ class SparkUtils:
         """
         Split a TS into chunks according to it's number of points.
         Build np.array containing (([tsuid, chunk_index, start_date, end_date],...).
+        NB: a chunk is defined as a semi-open interval [sd..ed[ : last value shall not be considered as included
 
         Necessary for extracting a TS in Spark.
 
@@ -502,15 +502,26 @@ class SparkUtils:
         :param nb_points_by_chunk: size of chunks in number of points (assuming timeserie is periodic and without holes)
         :type nb_points_by_chunk: int
 
+        :param overlap: overlap used to define inter-chunks (in number of points) - OPTIONAL
+        :type overlap: int
+
+        INTER CHUNKS DEFINITION:
+        ------------------------
+
+          chunk 0   chunk 2   ....                chunk 2*n
+        |---------|---------|---------|---------|---------|
+                |---|     |---|     |---|     |---|
+                inter     inter      ...      inter
+                chunk 1   chunk 3    ...      chunk 2*n-1
+
+                       sd              ed
+        CHUNK           |----------------|----------------|
+        INTER CHUNK               |-------------|
+                             ed-overlap      ed+overlap
+
         :return: list containing chunks definition ([tsuid, chunk_index, start_date, end_date],...)
         :rtype: list
         """
-
-        # Review#495: (FTA) overlap ? explain
-
-        # Review#495: (FTA) Function is wrong/needs clarification for the following call:
-        #                   SparkUtils.get_chunks_def("123TS", 1000, 10000, 1000, nb_points_by_chunk=2, overlap=None)
-        #                   end date=10000 but the last chunk (#4) has range between [90000,10001]
 
         # Init result
         data_to_compute = []
@@ -548,7 +559,7 @@ class SparkUtils:
         data_to_compute.append((tsuid,
                                 coef * (len(interval_limits) - 1),
                                 interval_limits[-1],
-                                ed + 1))
+                                ed))
         # ex: data_to_compute => 4 chunks  [[10, 19], [20, 29], [30, 40]]
 
         # 2.3/ add inter chunks definition with overlap
@@ -572,11 +583,14 @@ class SparkUtils:
         :type fid: str
         :type data: np.array
 
-        :return: the TSUID
+        :return: the TSUID or empty string if no data provided
         :rtype: str
 
         :raises IkatsException: if TS couldn't be created
         """
+
+        if not data:
+            return ""
 
         results = IkatsApi.ts.create(fid=fid, data=data, generate_metadata=False, sparkified=True)
         if results['status']:
