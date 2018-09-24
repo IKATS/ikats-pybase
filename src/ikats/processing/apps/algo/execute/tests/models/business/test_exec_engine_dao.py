@@ -108,10 +108,10 @@ class TestExecEngineWithCheckEngine(TestCase, CommonsCustomTest):
         my_custom = self.init_resource_named("Custom for created at {}".format(time.time()),
                                              save_in_db=True)
 
-        my_id = my_custom.db_id
+        my_name = my_custom.name
 
         my_async = False
-        my_opts = {'async': my_async, 'custo_algo': my_id, 'debug': True}
+        my_opts = {'async': my_async, 'custo_algo': my_name, 'debug': True}
 
         my_args = {'angle': angle}
 
@@ -121,12 +121,12 @@ class TestExecEngineWithCheckEngine(TestCase, CommonsCustomTest):
         self.info("- Custom ={}".format(CustomizedAlgoWs(my_custom).to_json(indent=2, level=LevelInfo.DETAIL)))
         self.info("- data ={}".format(json.dumps(obj=my_data, indent=2)))
 
-        http_req = self.request_factory.post(path=reverse(viewname='algo_run', args=[my_id]),
+        http_req = self.request_factory.post(path=reverse(viewname='algo_run', args=[my_name]),
                                              data=json.dumps(my_data),
                                              content_type="application/json")
 
         self.info("- data ={}".format(json.dumps(obj=my_data, indent=2)))
-        http_response = views_algo_run(http_req, my_id)
+        http_response = views_algo_run(http_req, my_name)
 
         # Display the check result
         result = json_io.decode_json_from_http_response(http_response)
@@ -158,7 +158,7 @@ class TestExecEngineWithCheckEngine(TestCase, CommonsCustomTest):
                                              factor="3",
                                              phase=5.0)
 
-        my_id = my_custom.db_id
+        my_id = my_custom.name
 
         my_async = False
         my_opts = {'async': my_async, 'custo_algo': True, 'debug': True}

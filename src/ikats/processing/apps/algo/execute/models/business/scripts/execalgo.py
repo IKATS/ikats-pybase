@@ -41,18 +41,18 @@ Note: no result is produced in process data of Non Temporal Database.
 LOGGER = logging.getLogger(__name__)
 
 
-def run(algo_id, arg_names, arg_values, asynchro=False, is_customized_algo=False, run_debug=True):
+def run(algo_name, arg_names, arg_values, asynchro=False, is_customized_algo=False, run_debug=True):
     """
     Launch the algorithm for the specified Implementation/CustomizedAlgo
 
-    :param algo_id: the ID is matching an Implementation or a CustomizedAlgo according to the flag is_customized_algo
-    :type algo_id: str
+    :param algo_name: the ID is matching an Implementation or a CustomizedAlgo according to the flag is_customized_algo
+    :type algo_name: str
     :param arg_names: list of input names
     :type arg_names: list of string
     :param arg_values: list of input arguments values matching arg_names
     :type arg_values: list
-    :param is_customized_algo: True if algo_id identifies CustomizedAlgo,
-        otherwise False if algo_id identifies an Implementation
+    :param is_customized_algo: True if algo_name identifies CustomizedAlgo,
+        otherwise False if algo_name identifies an Implementation
     :type is_customized_algo: boolean
     :param run_debug: TODO
     :type run_debug: boolean
@@ -79,13 +79,13 @@ def run(algo_id, arg_names, arg_values, asynchro=False, is_customized_algo=False
     status = None
     try:
         if is_customized_algo:
-            my_custom = CustomizedAlgoDao.find_business_elem_with_key(algo_id)
+            my_custom = CustomizedAlgoDao.find_business_elem_with_name(algo_name)[0]
             # ... may raise CustomizedAlgoDao.DoesNotExist
             my_implementation = my_custom.implementation
 
         else:
             my_custom = None
-            my_implementation = ImplementationDao.find_business_elem_with_key(algo_id)
+            my_implementation = ImplementationDao.find_business_elem_with_name(algo_name)[0]
             # ... may raise ImplementationDao.DoesNotExist
 
         my_script_name = my_script_name + " on " + my_implementation.name
@@ -96,7 +96,7 @@ def run(algo_id, arg_names, arg_values, asynchro=False, is_customized_algo=False
         checker = CheckEngine(checked_resource=def_resource, checked_value_context=context, check_status=None)
 
         completed_arg_names, completed_data_sources, output_names, receivers = __prepare_execution(
-            algo_id,
+            algo_name,
             arg_names,
             arg_values,
             execution_status,
@@ -178,7 +178,7 @@ def run(algo_id, arg_names, arg_values, asynchro=False, is_customized_algo=False
     except Exception as error:
 
         error_message = "Failure occurred running {0} with implementation={1}".format(
-            my_script_name, algo_id)
+            my_script_name, algo_name)
 
         LOGGER.error(error_message)
         execution_status.add_msg(error_message)
@@ -224,7 +224,7 @@ def __check_value(profile_item, value, checker):
         checker.check_domain(profile_item, value)
 
 
-def __prepare_execution(algo_id,
+def __prepare_execution(algo_name,
                         arg_names,
                         arg_values,
                         execution_status,
@@ -240,7 +240,7 @@ def __prepare_execution(algo_id,
     dict_inputs = __get_run_args(arg_names, arg_values)
 
     current_epoch_time = "%s" % (time.time() * 1000000)
-    running_prefix = "{}_{}_".format(current_epoch_time, algo_id)
+    running_prefix = "{}_{}_".format(current_epoch_time, algo_name)
 
     # Fulfill the argument lists with private arguments
     completed_arg_names = []
@@ -255,9 +255,9 @@ def __prepare_execution(algo_id,
             # private argument shall not be passed by the ikats client:
             #  => initialized by the server
             if name_cat_input in arg_names:
-                msg = "Argument error in execalgo.run: the argument named {0} in implementation {1} (id={2}) \
+                msg = "Argument error in execalgo.run: the argument named {0} in implementation {1} (name={2}) \
                             is private and cannot be defined on the client side".format(name_cat_input,
-                                                                                        implementation.name, algo_id)
+                                                                                        implementation.name, algo_name)
                 execution_status.set_error_with_msg(IkatsInputError(msg),
                                                     "RunAlgo: initial check failed: on input args")
 
@@ -332,8 +332,8 @@ def __prepare_execution(algo_id,
             execution_status.set_error_with_msg(
                 IkatsInputError(
                     "Argument error in execalgo.run: " +
-                    "no such argument named {0} in implementation {1} (id={2}): execution is aborted.".format(
-                        my_name, implementation.name, algo_id)), "RunAlgo: initial check failed: on input args")
+                    "no such argument named {0} in implementation {1} (name={2}): execution is aborted.".format(
+                        my_name, implementation.name, algo_name)), "RunAlgo: initial check failed: on input args")
             # process_id will be updated once ExecutableAlgo is saved in DB
     output_names = []
     receivers = []

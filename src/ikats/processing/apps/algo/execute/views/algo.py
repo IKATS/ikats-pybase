@@ -44,7 +44,7 @@ def get_json_error_data(code, exception):
     return {'http_code': code, 'http_msg': msg}
 
 
-def run(http_request, algo_id):
+def run(http_request, algo_name):
     """
     =======
     Summary
@@ -128,8 +128,8 @@ def run(http_request, algo_id):
 
     :param http_request: http request
     :type http_request:
-    :param algo_id: algorithm identifier
-    :type algo_id: int
+    :param algo_name: algorithm identifier
+    :type algo_name: str
     """
     factory_response = DjangoHttpResponseFactory()
     try:
@@ -167,7 +167,7 @@ def run(http_request, algo_id):
                 raise IkatsInputError("parameter %s not expected" % param)
 
         # call to script algo execution
-        my_exec_status = execalgo.run(algo_id=algo_id,
+        my_exec_status = execalgo.run(algo_name=algo_name,
                                       arg_names=input_args_list,
                                       arg_values=input_args_values_list,
                                       asynchro=in_options['async'],
