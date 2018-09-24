@@ -30,6 +30,7 @@ class ElementDao(models.Model):
     # id: automatically added by Django
     id = models.AutoField(primary_key=True)
 
+    name = models.CharField(max_length=60, help_text='unique name', blank=False, null=False, unique=True)
     label = models.CharField(max_length=60, null=False, blank=False, help_text='readable label adapted to the display')
     desc = models.TextField(help_text='full description', null=True)
 

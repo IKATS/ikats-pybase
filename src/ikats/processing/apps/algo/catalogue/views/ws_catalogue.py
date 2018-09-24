@@ -203,7 +203,7 @@ def get_algorithm_by_name(http_request, name):
                                 method_name="get_algorithm_by_name")
 
 
-def get_implementation_by_name(http_request, name):
+def get_implem_by_name(http_request, name):
     """
     Get the unique Implementation resource defined under the catalogue, for the functional name.
     returned as json object based upon ImplementationWs
@@ -231,7 +231,7 @@ def get_implementation_by_name(http_request, name):
                                 dao_class=ImplementationDao,
                                 webservice_class=ImplementationWs,
                                 default_level_info=LevelInfo.NORMAL,
-                                method_name="get_implementation_by_name")
+                                method_name="get_implem_by_name")
 
 
 def get_implementation(http_request, id_implementation):

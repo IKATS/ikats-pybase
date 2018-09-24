@@ -31,31 +31,12 @@ from apps.algo.catalogue.views import ws_catalogue
 #
 # See more details in ws_catalogue: usage of additional query params ...
 #
-urlpatterns = [url(r'^implementations/(?P<name>[A-z]\w+)/?$',
-                   ws_catalogue.get_implementation_by_name,
-                   name="get_implementation_by_name"),
-               url(r'^families/(?P<name>[A-z]\w+)/?$',
-                   ws_catalogue.get_family_by_name,
-                   name="get_family_by_name"),
-               url(r'^algorithms/(?P<name>[A-z]\w+)/?$',
-                   ws_catalogue.get_algorithm_by_name,
-                   name="get_algorithm_by_name"),
-               # DEPRECATED service before [#141671]: with database key
-               url(r'^implementations/(?P<id_implementation>[0-9]+)/?$',
-                   ws_catalogue.get_implementation,
-                   name="getWsCatImplementation"),
-               # search list of implementations
-               url(r'^implementations/?$',
-                   ws_catalogue.get_implementation_list,
-                   name="get_implementation_list"),
-               # search list of algorithms
-               url(r'^algorithms/?$',
-                   ws_catalogue.get_algorithm_list,
-                   name="get_algorithm_list"),
-               # search list of implementations
-               url(r'^families/?$',
-                   ws_catalogue.get_family_list,
-                   name="get_family_list"),
-               url(r'^export/implementations/?$',
-                   ws_catalogue.export_all_implementations,
-                   name="export_all_implementations")]
+urlpatterns = [
+    url(r'^implementations/(?P<name>[A-z]\w+)/?$', ws_catalogue.get_implem_by_name, name="get_implem_by_name"),
+    url(r'^families/(?P<name>[A-z]\w+)/?$', ws_catalogue.get_family_by_name, name="get_family_by_name"),
+    url(r'^algorithms/(?P<name>[A-z]\w+)/?$', ws_catalogue.get_algorithm_by_name, name="get_algorithm_by_name"),
+    url(r'^implementations/?$', ws_catalogue.get_implementation_list, name="get_implementation_list"),
+    url(r'^algorithms/?$', ws_catalogue.get_algorithm_list, name="get_algorithm_list"),
+    url(r'^families/?$', ws_catalogue.get_family_list, name="get_family_list"),
+    url(r'^export/implementations/?$', ws_catalogue.export_all_implementations, name="export_all_implementations")
+]
