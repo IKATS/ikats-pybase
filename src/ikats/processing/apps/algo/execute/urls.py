@@ -25,10 +25,7 @@ urlpatterns = patterns(
     #   output Json { ... }
     # See doc: IKATS_Spec_ModulesSpecifiques part. Executer
     #
-    url(
-        r'^runalgo/(\d+)$',
-        'algo.run',
-        name="algo_run"),
+    url(r'^runalgo/([A-z]\w+)$', 'algo.run', name="algo_run"),
 
     # getstatus: retrieves an execution state for a given processid
     # - url = ".../ikats/algo/execute/getstatus/-processid-"
@@ -37,8 +34,5 @@ urlpatterns = patterns(
     #   output Json { ... }
     # See doc: IKATS_Spec_ModulesSpecifiques part. Executer
     #
-    url(
-        r'^getstatus/(\d+)$',
-        'algo.getstatus',
-        name="algo_getstatus")
+    url(r'^getstatus/(\d+)$', 'algo.getstatus', name="algo_getstatus")
 )
