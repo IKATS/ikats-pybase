@@ -35,7 +35,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'corsheaders',
     'apps.algo.catalogue',
     'apps.algo.custom',
     'apps.algo.execute',
@@ -45,7 +44,6 @@ INSTALLED_APPS = [
 
 MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     # disabled general protection: 'django.middleware.csrf.CsrfViewMiddleware',
     # see https://docs.djangoproject.com/fr/1.8/ref/csrf
@@ -56,8 +54,6 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.security.SecurityMiddleware',
 )
-
-CORS_ORIGIN_ALLOW_ALL = True
 
 ROOT_URLCONF = 'ikats_processing.urls'
 URL_PATH_IKATS_ALGO = "/ikats/algo"

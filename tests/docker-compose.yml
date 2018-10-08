@@ -158,4 +158,3 @@ services:
       TSD_CONF_tsd__storage__enable_compaction: "false"
       TSD_CONF_tsd__storage__flush_interval: 500
       TSD_CONF_tsd__storage__fix_duplicates: "true"
-      TSD_CONF_tsd__http__request__cors_domains: "*"
