@@ -363,7 +363,7 @@ class IkatsTimeseries(IkatsGenericApiEndPoint):
     @staticmethod
     def inherit(tsuid, parent, *args, **kwargs):
         """
-        Import TS data points in database or update an existing TS with new points
+        Make a time series inherit of parent's metadata according to a pattern (not all metadata inherited)
 
         :param tsuid: TSUID of the TS in Ikats (which will inherit)
         :param parent: TSUID of inheritance parent

@@ -62,6 +62,21 @@ source ikats.env
 # Choose between Spark and Gunicorn
 if [[ -z ${SPARK_MODE} ]]
 then
+  if [[ ! -z ${SPARK_KUBE_HOSTNAME_SUFFIX} ]]
+  then
+    ip_addr=$(
+      ip addr show eth0 |
+      grep inet |
+      sed -re 's/^\s*inet\s*(.*)\/.*$/\1/' |
+      sed 's/\./-/g'
+    )
+    echo "Exposing spark driver at : $ip_addr.$SPARK_KUBE_HOSTNAME_SUFFIX"
+    echo "spark.driver.host   $ip_addr.$SPARK_KUBE_HOSTNAME_SUFFIX" >> /opt/spark/conf/spark-defaults.conf
+
+  else
+    echo "Running in native mode, exposed spark driver on $(hostname)"
+  fi
+
   # SPARK_MODE is not defined as environment variable, start gunicorn
   bash ${IKATS_PATH}/start_gunicorn.sh
 else

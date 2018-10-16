@@ -259,9 +259,9 @@ class TestRunAlgo(TestCase):
             status_algo1, "test_exec_async: step1 algo resampling")
 
         tested_impl_name = "pearson_correl_matrix_impl"
-        impl_id = self.get_impl_id(tested_impl_name)
 
-        status_algo2 = run(impl_id, ["ts_selection"], [['00001', '00002', '00003', '00004']], asynchro=True)
+        status_algo2 = run(tested_impl_name, ["ts_selection"], [
+                           ['00001', '00002', '00003', '00004']], asynchro=True)
 
         process_id_algo2 = status_algo2.get_process_id()
         state_algo2 = status_algo2.get_state()
