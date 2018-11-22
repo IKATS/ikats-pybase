@@ -159,10 +159,7 @@ class SSessionManager(object):
         :rtype: SparkContext
         """
 
-        if not SSessionManager.spark_session:
-            SSessionManager.create()
-
-        return SSessionManager.spark_session.sparkContext
+        return SSessionManager.get().sparkContext
 
     @staticmethod
     def stop():
@@ -381,13 +378,10 @@ class ScManager(object):
     def stop_all():
         """
         Forces the stop of the defined SparkContext: SSessionManager.SparkContext
-          - calls SSessionManager.stop()
+          - calls SSessionManager.stop_all()
 
         """
-        SSessionManager.ikats_users = 0
-        if SSessionManager.spark_session is not None:
-            SSessionManager.stop()
-            SSessionManager.spark_session = None
+        SSessionManager.stop_all()
 
 
 class SparkUtils:
