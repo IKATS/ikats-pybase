@@ -1,4 +1,8 @@
 pipeline {
+    options { 
+        buildDiscarder(logRotator(numToKeepStr: '4', artifactNumToKeepStr: '5'))
+        disableConcurrentBuilds() 
+    }
     agent any
     parameters {
         booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Run the test campaign')
