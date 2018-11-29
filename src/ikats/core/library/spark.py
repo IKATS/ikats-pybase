@@ -17,18 +17,25 @@ limitations under the License.
 import logging
 import numpy as np
 
+from ikats.core.config.ConfigReader import ConfigReader
+
 from ikats.core.library.exception import IkatsException
+
 from ikats.core.resource.api import IkatsApi
 from ikats.core.resource.client import TemporalDataMgr
 from ikats.core.resource.client.non_temporal_data_mgr import NonTemporalDataMgr
 from ikats.core.resource.interface import ResourceLocator
 
 from pyspark import SparkContext
+
+from pyspark.ml.linalg import Vectors
+
+from pyspark.sql.types import Row
+from pyspark.sql import functions as F
 from pyspark.sql import SparkSession
+
 from pyspark.accumulators import AccumulatorParam
 from pyspark.conf import SparkConf
-
-from ikats.core.config.ConfigReader import ConfigReader
 
 
 class SSessionManager(object):
@@ -112,6 +119,137 @@ class SSessionManager(object):
         df = rdd_chunk_data.toDF(["Index", "Timestamp", "Value"])
 
         return df, len(chunks)
+
+    def extract_aligned_tslist(self, tsuid_list, sd, ed, period, nb_points_by_chunk=50000, value_colname="feature"):
+        """
+        Extract multiple ALIGNED TS into a single column of a Spark DataFrame (each row = timestamp).
+
+        :param tsuid_list: List of tsuid to extract. Note that no check is done.
+        :type tsuid_list: list of str
+
+        :param sd: The meta data corresponding to the ts start date
+        :type sd: int
+
+        :param ed: The meta data corresponding to the ts end date
+        :type ed: int
+
+        :param period: The meta data corresponding to the ts period
+        :type period: int
+
+        :param nb_points_by_chunk: size of chunks in number of points (assuming timeserie is periodic and without holes)
+        :type nb_points_by_chunk: int
+
+        :param value_colname: Name of the created column of the result dataframe. Default "feature".
+        :type value_colname: str
+
+        :return: Dataframe containing :
+            * rows: current timestamp
+            * column: single column containing each TS value for curret timestamp (type: `Vector`)
+
+        ..Example:
+        +-------------+--------------+
+        | Timestamp   |  feature     |
+        +-------------+--------------+
+        | 14879030000 | [1.0, 1.0]   |
+        ...
+
+        """
+
+        # retrieve spark context
+        sc = SSessionManager.get_context()
+
+        # 1/ Get the chunks, and read TS by chunk
+        # ----------------------------------------------------------------------
+        # Get the chunks of THE FIRST TS
+        # Format: [(tsuid1, chunk_id, start_date, end_date), ...]
+        chunk1 = SparkUtils.get_chunks_def(tsuid=tsuid_list[0],
+                                           sd=sd,
+                                           ed=ed,
+                                           period=period,
+                                           nb_points_by_chunk=nb_points_by_chunk)
+
+        # Duplicate `chunks` n_ts times (`len(tsuid_list)`) -> get the chunks of all TS
+        # Format: [(tsuid, chunk_id, start_date, end_date), ...]
+        chunks = []
+        # For each TS
+        for ts in tsuid_list:
+            # for each chunk
+            for chunk_id in range(len(chunk1)):
+                # format: [(tsuid, chunkid, sd_chunk, ed_chunk)
+                chunks.append((ts, chunk_id, chunk1[chunk_id][2], chunk1[chunk_id][3]))
+
+        # Get the chunks, and distribute them with Spark -> each TS is partitioned on the same points
+        rdd_ts_info = sc.parallelize(chunks, len(chunks))
+
+        # INPUT  : [(tsuid, chunk_id, start_date, end_date), ...]
+        rdd_chunk_data = rdd_ts_info \
+            .flatMap(lambda x: [(y[0], x[0], x[1], y[1]) for y in IkatsApi.ts.read(tsuid_list=x[0],
+                                                                                   sd=int(x[2]),
+                                                                                   ed=int(x[3]))[0].tolist()])
+
+        # DESCRIPTION : Get the points within chunk range and suppress empty chunks
+        # INPUT  : [(tsuid, chunk_id, start_date, end_date), ...]
+        # OUTPUT : The dataset flat [(time, tsuid, index, value), ...]
+        # TODO: extraire toute les TS, et les mettre en forme dans le RDD
+        # TODO: wrapper la fonction `ts.read` pour lire TOUTES les ts par chunk
+        rdd_chunk_data = rdd_ts_info \
+            .flatMap(lambda x: [(y[0], x[0], x[1], y[1]) for y in IkatsApi.ts.read(tsuid_list=x[0],
+                                                                                   sd=int(x[2]),
+                                                                                   ed=int(x[3]))[0].tolist()])
+        # ..Note1: Result of `IkatsApi.ts.read` is [time, value]
+        # ..Note2: Result has to be list (if np.array, difficult to convert into Spark DF)
+
+        # DESCRIPTION : Transform into Spark DataFrame
+        # INPUT  : The RDD flat [(time, tsuid, index, value), ...]
+        # OUTPUT : A DataFrame with columns ["Timestamp", "tsuid", "Index", "Value"]
+        df = rdd_chunk_data.toDF(["Timestamp", "tsuid", "Index", "Value"])
+        # Example:
+        # +-----------+------------------------------------------+-----+-----+
+        # |Timestamp  |tsuid                                     |Index|Value|
+        # +-----------+------------------------------------------+-----+-----+
+        # |14879030000|B246F6000001000C7C00000200004B000003000C81|0    |1.0  |
+        # ...
+
+        # DESCRIPTION : Concatenate all Values per timestamp
+        # INPUT  : A DataFrame with columns ["Timestamp", "tsuid", "Index", "Value"]
+        # OUTPUT : A DataFrame with columns ["Timestamp", "Value"],
+        # where col "Value" contains list of values per TS
+        df = df.groupBy('Timestamp').agg(F.collect_list("Value").alias("Value")). \
+            sort('Timestamp')
+        # TODO: voir dans le code de rollmean pour éviter le sort
+        # Example:
+        # +-------------+--------------+
+        # | Timestamp   | Value        |
+        # +-------------+--------------+
+        # | 14879030000 | [1.0, 1.0]   |
+        # ...
+        # DataFrame[Timestamp: bigint, Value: array<double>]
+
+        # DESCRIPTION : Transform columns "Value" into `Vector` (necessary for input PCA.transform)
+        # INPUT  : A DataFrame with columns ["Timestamp", "Value"] : int, arrayList
+        # OUTPUT : A DataFrame with columns ["Timestamp", "Value"]: int, Vector
+        # TODO: le passage en rdd étant couteux, essayer d'organiser les données avant qu'elles ne soient changées en df
+        df = df.rdd.map(lambda x: Row(Timestamp=x[0], Value=Vectors.dense(x[1]))).toDF()
+        # Example:
+        # +-------------+--------------+
+        # | Timestamp   | Value        |
+        # +-------------+--------------+
+        # | 14879030000 | [1.0, 1.0]   |
+        # ...
+        # DataFrame[Timestamp: bigint, Value: vector]
+
+        # DESCRIPTION : Rename column "Value" into `_INPUT_COL`
+        # INPUT  : A DataFrame with columns ["Timestamp", "Value"] : int, arrayList
+        # OUTPUT : A DataFrame with columns ["Timestamp", `value_colname`]: int, Vector
+        df = df.selectExpr("Timestamp", "Value as {}".format(value_colname))
+        # Example:
+        # +-------------+----------------+
+        # | Timestamp   |`value_colname` |
+        # +-------------+----------------+
+        # | 14879030000 |   [1.0, 1.0]   |
+        # ...
+
+        return df
 
     @staticmethod
     def create():
