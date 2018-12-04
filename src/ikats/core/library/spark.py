@@ -120,11 +120,13 @@ class SSessionManager(object):
 
         return df, len(chunks)
 
-    def extract_aligned_tslist(self, tsuid_list, sd, ed, period, nb_points_by_chunk=50000, value_colname="feature"):
+    def get_tslist_in_single_col(self, tsuid_list, sd, ed, period, nb_points_by_chunk=50000, value_colname="feature"):
         """
-        Extract multiple ALIGNED TS into a single column of a Spark DataFrame (each row = timestamp).
+        Extract multiple ALIGNED TS into a single column of a Spark DataFrame (each row = 1 timestamp). See example
+        below.
+        Useful for extract inputs of an pyspark.ml model.
 
-        :param tsuid_list: List of tsuid to extract. Note that no check is done.
+        :param tsuid_list: List of tsuid to extract. MUST BE ALIGNED. Note that no check is done.
         :type tsuid_list: list of str
 
         :param sd: The meta data corresponding to the ts start date
@@ -142,17 +144,22 @@ class SSessionManager(object):
         :param value_colname: Name of the created column of the result dataframe. Default "feature".
         :type value_colname: str
 
-        :return: Dataframe containing :
-            * rows: current timestamp
-            * column: single column containing each TS value for curret timestamp (type: `Vector`)
+        :return: Tuple composed by:
+            * the number of chunks defined in the function
+            * Dataframe containing one row per timestamp, and column containing:
+                    * chunk index ("index")
+                    * timestamp ("Timestamp")
+                    * all values for current timestamp, stored into a `Vector` (`value_colname`)
+        :rtype: tuple (int, pyspark.sql.dataframe.DataFrame)
 
-        ..Example:
-        +-------------+--------------+
-        | Timestamp   |  feature     |
-        +-------------+--------------+
-        | 14879030000 | [1.0, 1.0]   |
-        ...
+        ..Example: 2 TS
+         +-----+-------------+----------------+
+         |index|Timestamp    |`value_colname` |
+         +-----+-------------+----------------+
+         |0    |1449755761000|[0.08,0.07]     |
+         ...
 
+        DataFrame[index: bigint, time: bigint, data: vector]
         """
 
         # retrieve spark context
@@ -161,95 +168,72 @@ class SSessionManager(object):
         # 1/ Get the chunks, and read TS by chunk
         # ----------------------------------------------------------------------
         # Get the chunks of THE FIRST TS
-        # Format: [(tsuid1, chunk_id, start_date, end_date), ...]
-        chunk1 = SparkUtils.get_chunks_def(tsuid=tsuid_list[0],
+        # Format: [(tsuid_list, chunk_id, start_date, end_date), ...]
+        chunks = SparkUtils.get_chunks_def(tsuid=tsuid_list,
                                            sd=sd,
                                            ed=ed,
                                            period=period,
                                            nb_points_by_chunk=nb_points_by_chunk)
-
-        # Duplicate `chunks` n_ts times (`len(tsuid_list)`) -> get the chunks of all TS
-        # Format: [(tsuid, chunk_id, start_date, end_date), ...]
-        chunks = []
-        # For each TS
-        for ts in tsuid_list:
-            # for each chunk
-            for chunk_id in range(len(chunk1)):
-                # format: [(tsuid, chunkid, sd_chunk, ed_chunk)
-                chunks.append((ts, chunk_id, chunk1[chunk_id][2], chunk1[chunk_id][3]))
+        # Example:[(['tsuid1','tsuid2'], 0, 1449755761000, 1449755770999),
+        #          (['tsuid1','tsuid2'], 1, 1449755771000, 1449755780999),...]
 
         # Get the chunks, and distribute them with Spark -> each TS is partitioned on the same points
         rdd_ts_info = sc.parallelize(chunks, len(chunks))
 
+        def __read_time_chunk(tsuid_list, sd, ed, chunk_id):
+            """
+            Read ONE SINGLE CHUNK for a list of tsuid (1 chunk = range of time, between a start date and an end date).
+
+            :param tsuid_list: List of tsuid to extract (MUST BE ALIGNED)
+            :type tsuid_list: list
+            :param sd: Timestamp start date of the chunk to extract
+            :type sd: int
+            :param ed: Timestamp end date of the chunk to extract
+            :type ed: int
+            :param chunk_id: The current chunk index
+            :type chunk_id: int
+
+            :return: List containing chunk_id, time, and DenseVector([value1, ..., value_n])
+            :rtype: list
+
+            ..Example:  [(chunk_id, time, DenseVector([value1, ..., value_n]) ), ...]
+            """
+            # Read all ts for the requested chunk of time (sd to ed)
+            data = np.array(IkatsApi.ts.read(tsuid_list=tsuid_list, sd=int(sd), ed=int(ed)))
+            # Shape = (n_ts, n_times, 2)
+
+            # Store all timestamps of the first TS (data shall be aligned)
+            timestamps = data[0, :, 0]
+            # shape = (n_times)
+
+            # Store all values
+            values = data[:, :, 1]
+            # shape = (n_ts, n_times)
+
+            # Example: [(chunk_id, time, DenseVector([value1, ..., value_n]) ), ...]
+            return [(chunk_id, timestamps[k], Vectors.dense(values[:, k])) for k in range(len(timestamps))]
+
+        # DESCRIPTION : Read tsuid_list per chunk time (distribute time ranges)
         # INPUT  : [(tsuid, chunk_id, start_date, end_date), ...]
-        rdd_chunk_data = rdd_ts_info \
-            .flatMap(lambda x: [(y[0], x[0], x[1], y[1]) for y in IkatsApi.ts.read(tsuid_list=x[0],
-                                                                                   sd=int(x[2]),
-                                                                                   ed=int(x[3]))[0].tolist()])
+        # OUTPUT : [(chunk_id, time, DenseVector([value_TS1, ..., value_TSn]) ), ...]
+        rdd_chunk_data = rdd_ts_info.flatMap(lambda x: __read_time_chunk(tsuid_list=x[0],
+                                                                         sd=x[2],
+                                                                         ed=x[3],
+                                                                         chunk_id=x[1]))
 
-        # DESCRIPTION : Get the points within chunk range and suppress empty chunks
-        # INPUT  : [(tsuid, chunk_id, start_date, end_date), ...]
-        # OUTPUT : The dataset flat [(time, tsuid, index, value), ...]
-        # TODO: extraire toute les TS, et les mettre en forme dans le RDD
-        # TODO: wrapper la fonction `ts.read` pour lire TOUTES les ts par chunk
-        rdd_chunk_data = rdd_ts_info \
-            .flatMap(lambda x: [(y[0], x[0], x[1], y[1]) for y in IkatsApi.ts.read(tsuid_list=x[0],
-                                                                                   sd=int(x[2]),
-                                                                                   ed=int(x[3]))[0].tolist()])
-        # ..Note1: Result of `IkatsApi.ts.read` is [time, value]
-        # ..Note2: Result has to be list (if np.array, difficult to convert into Spark DF)
+        # DESCRIPTION : Transform into DataFrame
+        # INPUT  : [(chunk_id, time, DenseVector([value_TS1, ..., value_TSn]) ), ...]
+        # OUTPUT : DataFrame containing columns: [index: bigint, Timestamp: bigint, `value_colname`: vector]
+        df = rdd_chunk_data.toDF(["index", "Timestamp", value_colname])
 
-        # DESCRIPTION : Transform into Spark DataFrame
-        # INPUT  : The RDD flat [(time, tsuid, index, value), ...]
-        # OUTPUT : A DataFrame with columns ["Timestamp", "tsuid", "Index", "Value"]
-        df = rdd_chunk_data.toDF(["Timestamp", "tsuid", "Index", "Value"])
         # Example:
-        # +-----------+------------------------------------------+-----+-----+
-        # |Timestamp  |tsuid                                     |Index|Value|
-        # +-----------+------------------------------------------+-----+-----+
-        # |14879030000|B246F6000001000C7C00000200004B000003000C81|0    |1.0  |
+        # +-----+-------------+------------+
+        # |index|Timestamp    |data        |
+        # +-----+-------------+------------+
+        # |0    |1449755761000|[0.08,0.07] |
         # ...
 
-        # DESCRIPTION : Concatenate all Values per timestamp
-        # INPUT  : A DataFrame with columns ["Timestamp", "tsuid", "Index", "Value"]
-        # OUTPUT : A DataFrame with columns ["Timestamp", "Value"],
-        # where col "Value" contains list of values per TS
-        df = df.groupBy('Timestamp').agg(F.collect_list("Value").alias("Value")). \
-            sort('Timestamp')
-        # TODO: voir dans le code de rollmean pour éviter le sort
-        # Example:
-        # +-------------+--------------+
-        # | Timestamp   | Value        |
-        # +-------------+--------------+
-        # | 14879030000 | [1.0, 1.0]   |
-        # ...
-        # DataFrame[Timestamp: bigint, Value: array<double>]
-
-        # DESCRIPTION : Transform columns "Value" into `Vector` (necessary for input PCA.transform)
-        # INPUT  : A DataFrame with columns ["Timestamp", "Value"] : int, arrayList
-        # OUTPUT : A DataFrame with columns ["Timestamp", "Value"]: int, Vector
-        # TODO: le passage en rdd étant couteux, essayer d'organiser les données avant qu'elles ne soient changées en df
-        df = df.rdd.map(lambda x: Row(Timestamp=x[0], Value=Vectors.dense(x[1]))).toDF()
-        # Example:
-        # +-------------+--------------+
-        # | Timestamp   | Value        |
-        # +-------------+--------------+
-        # | 14879030000 | [1.0, 1.0]   |
-        # ...
-        # DataFrame[Timestamp: bigint, Value: vector]
-
-        # DESCRIPTION : Rename column "Value" into `_INPUT_COL`
-        # INPUT  : A DataFrame with columns ["Timestamp", "Value"] : int, arrayList
-        # OUTPUT : A DataFrame with columns ["Timestamp", `value_colname`]: int, Vector
-        df = df.selectExpr("Timestamp", "Value as {}".format(value_colname))
-        # Example:
-        # +-------------+----------------+
-        # | Timestamp   |`value_colname` |
-        # +-------------+----------------+
-        # | 14879030000 |   [1.0, 1.0]   |
-        # ...
-
-        return df
+        return len(chunks), df
 
     @staticmethod
     def create():
