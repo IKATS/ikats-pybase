@@ -30,8 +30,6 @@ from pyspark import SparkContext
 
 from pyspark.ml.linalg import Vectors
 
-from pyspark.sql.types import Row
-from pyspark.sql import functions as F
 from pyspark.sql import SparkSession
 
 from pyspark.accumulators import AccumulatorParam
@@ -120,7 +118,8 @@ class SSessionManager(object):
 
         return df, len(chunks)
 
-    def get_tslist_in_single_col(self, tsuid_list, sd, ed, period, nb_points_by_chunk=50000, value_colname="feature"):
+    @staticmethod
+    def get_tslist_in_single_col(tsuid_list, sd, ed, period, nb_points_by_chunk=50000, value_colname="feature"):
         """
         Extract multiple ALIGNED TS into a single column of a Spark DataFrame (each row = 1 timestamp). See example
         below.
