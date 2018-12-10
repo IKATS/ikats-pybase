@@ -9,6 +9,7 @@ httpretty==0.8.14
 mccabe==0.5.2
 natsort==5.0.2
 numpy==1.11.0
+pandas==0.20.3
 pbr==1.10.0
 psycopg2==2.7.3.1
 py4j==0.10.7
