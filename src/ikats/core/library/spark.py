@@ -213,7 +213,7 @@ class SSessionManager(object):
             return [(chunk_id, timestamps[k], Vectors.dense(values[:, k])) for k in range(len(timestamps))]
 
         # DESCRIPTION : Read tsuid_list per chunk time (distribute time ranges)
-        # INPUT  : [(tsuid, chunk_id, start_date, end_date), ...]
+        # INPUT  : [(tsuid_list, chunk_id, start_date, end_date), ...]
         # OUTPUT : [(chunk_id, time, DenseVector([value_TS1, ..., value_TSn]) ), ...]
         rdd_chunk_data = rdd_ts_info.flatMap(lambda x: __read_time_chunk(tsuid_list=x[0],
                                                                          sd=x[2],
@@ -596,14 +596,14 @@ class SparkUtils:
     @staticmethod
     def get_chunks_def(tsuid, sd, ed, period, nb_points_by_chunk=50000, overlap=None):
         """
-        Split a TS into chunks according to it's number of points.
+        Split a TS or list of TS into chunks according to it's number of points.
         Build np.array containing (([tsuid, chunk_index, start_date, end_date],...).
         NB: a chunk is defined as a semi-open interval [sd..ed[ : last value shall not be considered as included
 
         Necessary for extracting a TS in Spark.
 
-        :param tsuid: TS to get values from
-        :type tsuid: str
+        :param tsuid: TS or list of TS to get values from
+        :type tsuid: str or list
 
         :param sd: start date of data
         :type sd: int
