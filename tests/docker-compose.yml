@@ -13,7 +13,6 @@ services:
       - spark-master
     build:
       context: ../
-    container_name: tests_pybase
     ports:
       - "8000:8000"
     environment:

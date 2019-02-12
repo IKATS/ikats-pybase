@@ -35,7 +35,7 @@ docker-compose pull
 docker-compose up --build -d
 
 # Container name to test (should never change)
-containerName=tests_pybase
+containerName=pybase
 
 # Ikats path inside the container
 IKATS_PATH=/ikats
