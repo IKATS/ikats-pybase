@@ -10,7 +10,7 @@ trap "echo 'Stopping...';docker-compose down >/dev/null 2>&1; exit 1" INT KILL Q
 dockerBindingsName="docker_bindings_EDF_portfolio"
 echo "Getting fresh docker bindings"
 # Get new data
-pathToDockerBindingsRepo=${1:-/IKATSDATA/docker_bindings/}
+pathToDockerBindingsRepo=${1:-/mnt/IKATSNAS/docker_bindings/}
 
 if [[ ! -d ${pathToDockerBindingsRepo} ]]
 then
