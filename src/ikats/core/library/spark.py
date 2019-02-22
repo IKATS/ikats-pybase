@@ -1,5 +1,5 @@
 """
-Copyright 2018 CS Systèmes d'Information
+Copyright 2018-2019 CS Systèmes d'Information
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,18 +17,23 @@ limitations under the License.
 import logging
 import numpy as np
 
+from ikats.core.config.ConfigReader import ConfigReader
+
 from ikats.core.library.exception import IkatsException
+
 from ikats.core.resource.api import IkatsApi
 from ikats.core.resource.client import TemporalDataMgr
 from ikats.core.resource.client.non_temporal_data_mgr import NonTemporalDataMgr
 from ikats.core.resource.interface import ResourceLocator
 
 from pyspark import SparkContext
+
+from pyspark.ml.linalg import Vectors
+
 from pyspark.sql import SparkSession
+
 from pyspark.accumulators import AccumulatorParam
 from pyspark.conf import SparkConf
-
-from ikats.core.config.ConfigReader import ConfigReader
 
 
 class SSessionManager(object):
@@ -114,6 +119,122 @@ class SSessionManager(object):
         return df, len(chunks)
 
     @staticmethod
+    def get_tslist_in_single_col(tsuid_list, sd, ed, period, nb_points_by_chunk=50000, value_colname="feature"):
+        """
+        Extract multiple ALIGNED TS into a single column of a Spark DataFrame (each row = 1 timestamp). See example
+        below.
+        Useful for extract inputs of an pyspark.ml model.
+
+        :param tsuid_list: List of tsuid to extract. MUST BE ALIGNED. Note that no check is done.
+        :type tsuid_list: list of str
+
+        :param sd: The meta data corresponding to the ts start date
+        :type sd: int
+
+        :param ed: The meta data corresponding to the ts end date
+        :type ed: int
+
+        :param period: The meta data corresponding to the ts period
+        :type period: int
+
+        :param nb_points_by_chunk: size of chunks in number of points (assuming timeserie is periodic and without holes)
+        :type nb_points_by_chunk: int
+
+        :param value_colname: Name of the created column of the result dataframe. Default "feature".
+        :type value_colname: str
+
+        :return: Tuple composed by:
+            * the number of chunks defined in the function
+            * Dataframe containing one row per timestamp, and column containing:
+                    * chunk index ("index")
+                    * timestamp ("Timestamp")
+                    * all values for current timestamp, stored into a `Vector` (`value_colname`)
+        :rtype: tuple (int, pyspark.sql.dataframe.DataFrame)
+
+        ..Example: 2 TS
+         +-----+-------------+----------------+
+         |index|Timestamp    |`value_colname` |
+         +-----+-------------+----------------+
+         |0    |1449755761000|[0.08,0.07]     |
+         ...
+
+        DataFrame[index: bigint, time: bigint, data: vector]
+        """
+
+        # retrieve spark context
+        sc = SSessionManager.get_context()
+
+        # 1/ Get the chunks, and read TS by chunk
+        # ----------------------------------------------------------------------
+        # Get the chunks of THE FIRST TS
+        # Format: [(tsuid_list, chunk_id, start_date, end_date), ...]
+        chunks = SparkUtils.get_chunks_def(tsuid=tsuid_list,
+                                           sd=sd,
+                                           ed=ed,
+                                           period=period,
+                                           nb_points_by_chunk=nb_points_by_chunk)
+        # Example:[(['tsuid1','tsuid2'], 0, 1449755761000, 1449755770999),
+        #          (['tsuid1','tsuid2'], 1, 1449755771000, 1449755780999),...]
+
+        # Get the chunks, and distribute them with Spark -> each TS is partitioned on the same points
+        rdd_ts_info = sc.parallelize(chunks, len(chunks))
+
+        def __read_time_chunk(tsuid_list, sd, ed, chunk_id):
+            """
+            Read ONE SINGLE CHUNK for a list of tsuid (1 chunk = range of time, between a start date and an end date).
+
+            :param tsuid_list: List of tsuid to extract (MUST BE ALIGNED)
+            :type tsuid_list: list
+            :param sd: Timestamp start date of the chunk to extract
+            :type sd: int
+            :param ed: Timestamp end date of the chunk to extract
+            :type ed: int
+            :param chunk_id: The current chunk index
+            :type chunk_id: int
+
+            :return: List containing chunk_id, time, and DenseVector([value1, ..., value_n])
+            :rtype: list
+
+            ..Example:  [(chunk_id, time, DenseVector([value1, ..., value_n]) ), ...]
+            """
+            # Read all ts for the requested chunk of time (sd to ed)
+            data = np.array(IkatsApi.ts.read(tsuid_list=tsuid_list, sd=int(sd), ed=int(ed)))
+            # Shape = (n_ts, n_times, 2)
+
+            # Store all timestamps of the first TS (data shall be aligned)
+            timestamps = data[0, :, 0]
+            # shape = (n_times)
+
+            # Store all values
+            values = data[:, :, 1]
+            # shape = (n_ts, n_times)
+
+            # Example: [(chunk_id, time, DenseVector([value1, ..., value_n]) ), ...]
+            return [(chunk_id, timestamps[k], Vectors.dense(values[:, k])) for k in range(len(timestamps))]
+
+        # DESCRIPTION : Read tsuid_list per chunk time (distribute time ranges)
+        # INPUT  : [(tsuid_list, chunk_id, start_date, end_date), ...]
+        # OUTPUT : [(chunk_id, time, DenseVector([value_TS1, ..., value_TSn]) ), ...]
+        rdd_chunk_data = rdd_ts_info.flatMap(lambda x: __read_time_chunk(tsuid_list=x[0],
+                                                                         sd=x[2],
+                                                                         ed=x[3],
+                                                                         chunk_id=x[1]))
+
+        # DESCRIPTION : Transform into DataFrame
+        # INPUT  : [(chunk_id, time, DenseVector([value_TS1, ..., value_TSn]) ), ...]
+        # OUTPUT : DataFrame containing columns: [index: bigint, Timestamp: bigint, `value_colname`: vector]
+        df = rdd_chunk_data.toDF(["index", "Timestamp", value_colname])
+
+        # Example:
+        # +-----+-------------+------------+
+        # |index|Timestamp    |data        |
+        # +-----+-------------+------------+
+        # |0    |1449755761000|[0.08,0.07] |
+        # ...
+
+        return len(chunks), df
+
+    @staticmethod
     def create():
         """
         Create a new spark session from an existing spark context.
@@ -159,10 +280,7 @@ class SSessionManager(object):
         :rtype: SparkContext
         """
 
-        if not SSessionManager.spark_session:
-            SSessionManager.create()
-
-        return SSessionManager.spark_session.sparkContext
+        return SSessionManager.get().sparkContext
 
     @staticmethod
     def stop():
@@ -381,13 +499,10 @@ class ScManager(object):
     def stop_all():
         """
         Forces the stop of the defined SparkContext: SSessionManager.SparkContext
-          - calls SSessionManager.stop()
+          - calls SSessionManager.stop_all()
 
         """
-        SSessionManager.ikats_users = 0
-        if SSessionManager.spark_session is not None:
-            SSessionManager.stop()
-            SSessionManager.spark_session = None
+        SSessionManager.stop_all()
 
 
 class SparkUtils:
@@ -481,14 +596,14 @@ class SparkUtils:
     @staticmethod
     def get_chunks_def(tsuid, sd, ed, period, nb_points_by_chunk=50000, overlap=None):
         """
-        Split a TS into chunks according to it's number of points.
+        Split a TS or list of TS into chunks according to it's number of points.
         Build np.array containing (([tsuid, chunk_index, start_date, end_date],...).
         NB: a chunk is defined as a semi-open interval [sd..ed[ : last value shall not be considered as included
 
         Necessary for extracting a TS in Spark.
 
-        :param tsuid: TS to get values from
-        :type tsuid: str
+        :param tsuid: TS or list of TS to get values from
+        :type tsuid: str or list
 
         :param sd: start date of data
         :type sd: int

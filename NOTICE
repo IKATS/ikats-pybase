@@ -65,8 +65,8 @@ The following components are provided under Apache Software License:
     requests (2.8.1)
     https://pypi.org/project/requests/
 
-    pyspark (1.6.2)
-    http://spark.apache.org/docs/2.1.0/api/python/_modules/pyspark.html
+    pyspark (2.3.2)
+    http://spark.apache.org/docs/2.3.2/api/python/index.html
 
 =================================================
 GNU Lesser General Public License
