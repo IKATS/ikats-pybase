@@ -3,7 +3,7 @@ FROM ikats/spark:0.7.42
 LABEL license="Apache License, Version 2.0"
 LABEL copyright="CS Systèmes d'Information"
 LABEL maintainer="contact@ikats.org"
-LABEL version="0.9.1"
+LABEL version="0.9.2"
 
 COPY assets/requirements.txt /tmp
 WORKDIR /tmp
