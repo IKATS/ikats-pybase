@@ -8,7 +8,7 @@ gunicorn==19.9.0
 httpretty==0.8.14
 mccabe==0.5.2
 natsort==5.0.2
-numpy==1.11.0
+numpy==1.21.0
 pandas==0.20.3
 pbr==1.10.0
 psycopg2==2.7.3.1
